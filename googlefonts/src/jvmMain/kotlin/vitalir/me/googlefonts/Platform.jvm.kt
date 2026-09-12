@@ -1,7 +1,6 @@
 package vitalir.me.googlefonts
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
@@ -29,20 +28,21 @@ internal actual suspend fun loadFontInternal(
         FontDiskCache.put(key, fetched)
         fetched
     }
-    return createLoadedFont(key, bytes, weight, style)
+    return createLoadedFont(key, bytes, weight, style, variationSettings)
 }
 
-@OptIn(InternalComposeUiApi::class)
 private fun createLoadedFont(
     key: String,
     bytes: ByteArray,
     weight: FontWeight,
     style: FontStyle,
+    variationSettings: FontVariation.Settings,
 ): Font = Font(
     identity = "googlefonts:$key",
     data = bytes,
     weight = weight,
     style = style,
+    variationSettings = variationSettings,
 )
 
 internal actual fun defaultHttpClient(): FontHttpClient? = JdkFontHttpClient()

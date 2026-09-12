@@ -1,11 +1,17 @@
 package vitalir.me.googlefonts
 
+import androidx.compose.ui.text.font.FontListFontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.platform.LoadedFont
 import java.io.File
 import java.nio.file.Files
 import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -33,6 +39,7 @@ class GoogleFontsIntegrationTest {
         	<families>
         		<family name='TestFont'>
         			<font weight='400' italic='0.0' styleName='Regular' url='//font/font.ttf'/>
+        			<font weight='700' italic='0.0' styleName='Bold' url='//font/font-bold.ttf'/>
         		</family>
         	</families>
         </font_directory>
@@ -43,6 +50,7 @@ class GoogleFontsIntegrationTest {
         http = FakeHttpClient()
         http.responses["http://dir/directory.xml"] = directoryXml.toByteArray()
         http.responses["https://font/font.ttf"] = "fake-font-bytes".toByteArray()
+        http.responses["https://font/font-bold.ttf"] = "fake-font-bold-bytes".toByteArray()
         GoogleFonts.httpClient = http
         FontDirectoryProvider.directoryUrl = "http://dir/directory.xml"
         cacheDir = Files.createTempDirectory("googlefonts-test").toString()
@@ -79,5 +87,29 @@ class GoogleFontsIntegrationTest {
     fun throwsWhenFontNotInDirectory() = runBlocking<Unit> {
         val result = runCatching { GoogleFont("MissingFont").load() }
         assertTrue(result.exceptionOrNull() is GoogleFontException)
+    }
+
+    @Test
+    fun toFontFamilyReturnsFamilyWithMatchingFace() = runBlocking<Unit> {
+        val family = GoogleFont("TestFont").toFontFamily(weight = FontWeight.Bold)
+        assertTrue(family is FontListFontFamily)
+        val font = (family as FontListFontFamily).fonts.single()
+        assertEquals(FontWeight.Bold, font.weight)
+        assertEquals(FontStyle.Normal, font.style)
+    }
+
+    @Test
+    fun toFontFamilyMultiFaceLoadsAllWeights() = runBlocking<Unit> {
+        val family = GoogleFont("TestFont").toFontFamily(FontWeight.Normal, FontWeight.Bold)
+        assertTrue(family is FontListFontFamily)
+        assertEquals(2, (family as FontListFontFamily).fonts.size)
+    }
+
+    @Test
+    fun variationSettingsArePassedToFont() = runBlocking<Unit> {
+        val variation = FontVariation.Settings(FontVariation.weight(500))
+        val font = GoogleFont("TestFont").load(variationSettings = variation)
+        val loaded = font as LoadedFont
+        assertEquals(variation, loaded.variationSettings)
     }
 }

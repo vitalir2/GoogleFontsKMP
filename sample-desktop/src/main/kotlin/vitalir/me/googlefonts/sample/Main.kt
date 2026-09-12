@@ -9,14 +9,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import vitalir.me.googlefonts.GoogleFont
-import vitalir.me.googlefonts.rememberGoogleFont
+import vitalir.me.googlefonts.rememberGoogleFontFamily
 
 fun main() = application {
     Window(onCloseRequest = ::exitApplication, title = "GoogleFontsKMP Sample") {
@@ -28,15 +27,15 @@ fun main() = application {
 
 @Composable
 fun SampleContent() {
-    val robotoBold = rememberGoogleFont(GoogleFont("Roboto"), weight = FontWeight.Bold)
-    val openSans = rememberGoogleFont(GoogleFont("Open Sans"))
+    val robotoBold = rememberGoogleFontFamily(GoogleFont("Roboto"), weight = FontWeight.Bold)
+    val openSans = rememberGoogleFontFamily(GoogleFont("Open Sans"))
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Roboto Bold", fontFamily = robotoBold?.let { FontFamily(it) }, fontSize = 32.sp)
-        Text("Open Sans Regular", fontFamily = openSans?.let { FontFamily(it) }, fontSize = 32.sp)
+        Text("Roboto Bold", fontFamily = robotoBold, fontSize = 32.sp)
+        Text("Open Sans Regular", fontFamily = openSans, fontSize = 32.sp)
         Text("System font (fallback while loading)", fontSize = 32.sp)
     }
 }

@@ -42,3 +42,21 @@ public fun rememberGoogleFont(
     }
     return font
 }
+
+/**
+ * Loads a Google Font and returns a [FontFamily] containing it once available, or null while
+ * loading or on failure. The result can be passed directly to `Text(fontFamily = ...)`.
+ *
+ * @param onError invoked when loading fails; when null the failure is silent (returns null).
+ */
+@Composable
+public fun rememberGoogleFontFamily(
+    googleFont: GoogleFont,
+    weight: FontWeight = FontWeight.Normal,
+    style: FontStyle = FontStyle.Normal,
+    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
+    onError: ((GoogleFontException) -> Unit)? = null,
+): FontFamily? {
+    val font = rememberGoogleFont(googleFont, weight, style, variationSettings, onError)
+    return font?.let { FontFamily(it) }
+}

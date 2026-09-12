@@ -5,7 +5,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.platform.LoadedFont
+import androidx.compose.ui.text.platform.Font
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
@@ -36,11 +36,12 @@ internal actual suspend fun loadFontInternal(
         FontDiskCache.put(key, fetched)
         fetched
     }
-    return LoadedFont(
+    return Font(
         identity = "googlefonts:$key",
-        getData = { bytes },
+        data = bytes,
         weight = weight,
         style = style,
+        variationSettings = variationSettings,
     )
 }
 

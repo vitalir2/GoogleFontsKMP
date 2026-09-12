@@ -49,15 +49,14 @@ dependencies {
 
 ```kotlin
 import vitalir.me.googlefonts.GoogleFont
-import vitalir.me.googlefonts.rememberGoogleFont
-import androidx.compose.ui.text.font.FontFamily
+import vitalir.me.googlefonts.rememberGoogleFontFamily
 
 @Composable
 fun Greeting() {
-    val roboto = rememberGoogleFont(GoogleFont("Roboto"), weight = FontWeight.Bold)
+    val roboto = rememberGoogleFontFamily(GoogleFont("Roboto"), weight = FontWeight.Bold)
     Text(
         text = "Hello, Google Fonts!",
-        fontFamily = roboto?.let { FontFamily(it) }, // null while loading / on failure
+        fontFamily = roboto, // null while loading / on failure
     )
 }
 ```
@@ -66,6 +65,15 @@ fun Greeting() {
 
 ```kotlin
 class GoogleFont(val name: String, val bestEffort: Boolean = true)
+
+@Composable
+fun rememberGoogleFontFamily(
+    googleFont: GoogleFont,
+    weight: FontWeight = FontWeight.Normal,
+    style: FontStyle = FontStyle.Normal,
+    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
+    onError: ((GoogleFontException) -> Unit)? = null,
+): FontFamily?
 
 @Composable
 fun rememberGoogleFont(
@@ -82,6 +90,17 @@ suspend fun GoogleFont.load(
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
 ): Font
 
+suspend fun GoogleFont.toFontFamily(
+    weight: FontWeight = FontWeight.Normal,
+    style: FontStyle = FontStyle.Normal,
+    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
+): FontFamily
+
+suspend fun GoogleFont.toFontFamily(
+    vararg weights: FontWeight,
+    style: FontStyle = FontStyle.Normal,
+): FontFamily
+
 suspend fun GoogleFont.preload(weight, style, variationSettings)
 
 suspend fun GoogleFont.isCached(weight, style, variationSettings): Boolean
@@ -89,10 +108,14 @@ suspend fun GoogleFont.isCached(weight, style, variationSettings): Boolean
 class GoogleFontException(message: String, cause: Throwable? = null) : Exception
 ```
 
-- `rememberGoogleFont` — composable; returns `null` while loading or on failure (fallback text
-  keeps rendering). Use `onError` to observe failures.
-- `load` — suspend; returns a resolved `Font` ready for `FontFamily`. Throws `GoogleFontException`
-  when the font cannot be resolved or downloaded.
+- `rememberGoogleFontFamily` — composable; returns a `FontFamily` ready for `Text(fontFamily = …)`,
+  or null while loading / on failure (fallback text keeps rendering). Use `onError` to observe
+  failures.
+- `rememberGoogleFont` — same, but returns the underlying `Font`.
+- `load` — suspend; returns a resolved `Font`. Throws `GoogleFontException` when the font cannot
+  be resolved or downloaded.
+- `toFontFamily` — loads and wraps the font in a `FontFamily`; the vararg overload loads one face
+  per weight, mirroring the `FontFamily(Font(gf, W400), Font(gf, W700))` pattern.
 - `preload` — loads and caches without returning the font.
 - `isCached` — true when the font is already in memory or on disk, so `load` needs no network.
 
@@ -147,9 +170,18 @@ GoogleFonts.useKtorClient(HttpClient())
 - **Android** resolves fonts through Google Play Services. `bestEffort` and variable-font
   `variationSettings` behave exactly like the AndroidX library.
 - **iOS / Desktop** resolve weight/style against the Google Fonts directory and download the
-  matching TTF. `variationSettings` are accepted but only applied where the platform font
-  pipeline supports them (Desktop); true variable-font axis ranges are a planned enhancement.
+  matching TTF. `variationSettings` are applied to the loaded font on all targets.
 - **Web** is not implemented yet.
+
+## Preloading with the Compose resolver
+
+A `FontFamily` returned by `toFontFamily` can also be preloaded through Compose's native
+`FontFamily.Resolver` (reflow-aware), e.g. before starting the UI:
+
+```kotlin
+val resolver = createFontFamilyResolver()
+resolver.preload(GoogleFont("Roboto").toFontFamily(FontWeight.Normal, FontWeight.Bold))
+```
 
 ## Testing
 

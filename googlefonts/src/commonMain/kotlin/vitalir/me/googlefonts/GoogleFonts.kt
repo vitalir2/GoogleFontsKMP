@@ -19,7 +19,8 @@ public object GoogleFonts {
     public var httpClient: FontHttpClient? = null
 
     internal fun resolveHttpClient(): FontHttpClient =
-        httpClient ?: defaultHttpClient()
+        httpClient
+            ?: defaultHttpClient()
             ?: throw GoogleFontException(
                 "No FontHttpClient configured. Set GoogleFonts.httpClient or add the googlefonts-ktor module.",
             )
@@ -38,6 +39,25 @@ public suspend fun GoogleFont.load(
     style: FontStyle = FontStyle.Normal,
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
 ): Font = loadCached(this, weight, style, variationSettings, context = null)
+
+/**
+ * Loads [this] Google Font and returns a [FontFamily] containing the resolved font, ready to be
+ * used directly in a [TextStyle] or theme typography.
+ */
+public suspend fun GoogleFont.toFontFamily(
+    weight: FontWeight = FontWeight.Normal,
+    style: FontStyle = FontStyle.Normal,
+    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
+): FontFamily = FontFamily(load(weight, style, variationSettings))
+
+/**
+ * Loads [this] Google Font at multiple weights and returns a [FontFamily] with one face per
+ * weight, mirroring the `FontFamily(Font(gf, W400), Font(gf, W700))` pattern.
+ */
+public suspend fun GoogleFont.toFontFamily(
+    vararg weights: FontWeight,
+    style: FontStyle = FontStyle.Normal,
+): FontFamily = FontFamily(weights.map { load(it, style, FontVariation.Settings(it, style)) })
 
 /** Loads and caches [this] font without returning it. */
 public suspend fun GoogleFont.preload(
@@ -63,8 +83,7 @@ public suspend fun GoogleFont.isCached(
         style == FontStyle.Italic,
         variationSettings.settings.toString(),
     )
-    if (FontMemoryCache.get(memoryKey) != null) return true
-    return isCachedInternal(this, weight, style)
+    return FontMemoryCache.get(memoryKey) != null || isCachedInternal(this, weight, style)
 }
 
 internal suspend fun loadCached(
