@@ -11,14 +11,21 @@ import androidx.core.content.res.FontResourcesParserCompat
 import java.util.Arrays
 
 /**
- * Checks whether the downloadable-fonts provider is available on device.
+ * Checks whether the downloadable-fonts provider is available on this device.
  *
- * This is not necessary for normal usage, but may be useful in debugging downloadable fonts
- * behavior.
+ * This is not necessary for normal usage — it is useful when debugging downloadable-fonts
+ * behavior, for example to confirm that Google Play Services is present and correctly signed.
  *
- * @param context for looking up the font provider in.
- * @return true if the provider is usable for downloadable fonts, false if it's not found.
- * @throws IllegalStateException if the provider is on device, but certificates don't match.
+ * ```kotlin
+ * if (myProvider.isAvailableOnDevice(context)) {
+ *     // fonts can be loaded through myProvider
+ * }
+ * ```
+ *
+ * @param context context used to look up the font provider.
+ * @return `true` if the provider is usable for downloadable fonts, `false` if it is not found.
+ * @throws IllegalStateException if the provider is present on device but its certificates do not
+ *   match the ones supplied.
  */
 @WorkerThread
 public fun GoogleFont.Provider.isAvailableOnDevice(context: Context): Boolean =

@@ -11,9 +11,12 @@ import vitalir.me.googlefonts.GoogleFonts
 /**
  * [FontHttpClient] backed by a Ktor [HttpClient].
  *
- * ```
+ * ```kotlin
  * GoogleFonts.httpClient = KtorFontHttpClient(HttpClient())
  * ```
+ *
+ * @param client the Ktor client to use. The library does not close it — manage its lifecycle
+ *   yourself.
  */
 public class KtorFontHttpClient(
     private val client: HttpClient,
@@ -28,7 +31,17 @@ public class KtorFontHttpClient(
     }
 }
 
-/** Configures [GoogleFonts] to use the given Ktor [HttpClient]. */
+/**
+ * Configures [GoogleFonts] to download fonts with the given Ktor [HttpClient].
+ *
+ * Equivalent to `GoogleFonts.httpClient = KtorFontHttpClient(client)`.
+ *
+ * ```kotlin
+ * GoogleFonts.useKtorClient(HttpClient())
+ * ```
+ *
+ * @param client the Ktor client to use; its lifecycle is managed by the caller.
+ */
 public fun GoogleFonts.useKtorClient(client: HttpClient) {
     httpClient = KtorFontHttpClient(client)
 }

@@ -3,10 +3,21 @@ package vitalir.me.googlefonts
 /**
  * A font family available on Google Fonts.
  *
- * @param name name of the font family, e.g. "Roboto" or "Open Sans".
+ * A [GoogleFont] is a lightweight descriptor — it does not load anything by itself. Resolve it
+ * with [rememberGoogleFontFamily], [load], or the [Font] factory.
+ *
+ * ```kotlin
+ * val roboto = GoogleFont("Roboto")
+ * val robotoStrict = GoogleFont("Roboto", bestEffort = false)
+ * ```
+ *
+ * @param name name of the font family, e.g. `"Roboto"` or `"Open Sans"`.
  * @param bestEffort if `true` and the requested weight/style is not available for the family,
  *   the closest available match is returned. If `false`, loading fails when the exact
  *   weight/style is not available.
+ * @see rememberGoogleFontFamily
+ * @see GoogleFont.load
+ * @see Font
  */
 public class GoogleFont(
     public val name: String,
