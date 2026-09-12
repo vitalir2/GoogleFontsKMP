@@ -3,6 +3,8 @@ package vitalir.me.googlefonts
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.TimeSource
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Fetches and caches the Google Fonts directory
@@ -22,24 +24,27 @@ internal object FontDirectoryProvider {
     private val ttl: Duration = 7.days
     private val ttlMillis: Long = ttl.inWholeMilliseconds
 
+    private val mutex = Mutex()
     private var cached: FontDirectory? = null
     private var cachedAt: TimeSource.Monotonic.ValueTimeMark? = null
 
-    suspend fun get(): FontDirectory {
+    suspend fun get(): FontDirectory = mutex.withLock {
         val current = cached
         val at = cachedAt
-        if (current != null && at != null && at.elapsedNow() < ttl) return current
+        if (current != null && at != null && at.elapsedNow() < ttl) return@withLock current
         val bytes = readDirectoryBytes()
         val directory = FontDirectoryParser.parse(bytes.decodeToString())
         cached = directory
         cachedAt = TimeSource.Monotonic.markNow()
-        return directory
+        directory
     }
 
     /** Test hook: clears the in-memory directory cache. */
-    internal fun clear() {
-        cached = null
-        cachedAt = null
+    internal suspend fun clear() {
+        mutex.withLock {
+            cached = null
+            cachedAt = null
+        }
     }
 
     private suspend fun readDirectoryBytes(): ByteArray {

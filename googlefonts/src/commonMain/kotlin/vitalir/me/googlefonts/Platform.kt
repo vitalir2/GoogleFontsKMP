@@ -5,6 +5,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * Platform-specific font loading. On Android this uses the system downloadable-fonts provider
@@ -45,3 +46,6 @@ internal expect suspend fun isCachedInternal(
 
 /** Current wall-clock time in milliseconds since the Unix epoch. */
 internal expect fun currentTimeMillis(): Long
+
+/** Dispatcher for blocking file I/O, so it never starves the fetch pipeline. */
+internal expect fun ioDispatcher(): CoroutineDispatcher

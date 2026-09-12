@@ -2,6 +2,7 @@ package vitalir.me.googlefonts
 
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -20,15 +22,24 @@ import kotlinx.coroutines.sync.withLock
  */
 internal object FontFetcher {
 
+    @Volatile
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val inFlight = mutableMapOf<String, CompletableDeferred<ByteArray>>()
     private val mutex = Mutex()
+    private val inFlight = mutableMapOf<String, CompletableDeferred<ByteArray>>()
 
-    /** Test hook: cancels in-flight background fetches and clears the dedup map. */
+    /** In-memory byte cache so repeated skiko `getData` calls skip the disk read. */
+    private val memoryCache = mutableMapOf<String, ByteArray>()
+
+    /** Test hook: cancels in-flight background fetches and clears the caches. */
     internal fun reset() {
         scope.cancel()
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        inFlight.clear()
+        runBlocking {
+            mutex.withLock {
+                inFlight.clear()
+                memoryCache.clear()
+            }
+        }
     }
 
     /** Test hook: suspends until all background prefetches have finished. */
@@ -46,7 +57,11 @@ internal object FontFetcher {
         style: FontStyle,
     ): ByteArray {
         val key = fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic)
-        FontDiskCache.get(key)?.let { return it }
+        mutex.withLock { memoryCache[key] }?.let { return it }
+        FontDiskCache.get(key)?.let { bytes ->
+            mutex.withLock { memoryCache[key] = bytes }
+            return bytes
+        }
         val deferred = CompletableDeferred<ByteArray>()
         val winner = mutex.withLock {
             inFlight[key]?.let { return@withLock it } ?: deferred.also { inFlight[key] = it }
@@ -55,6 +70,7 @@ internal object FontFetcher {
         try {
             val bytes = download(googleFont, weight, style)
             FontDiskCache.put(key, bytes)
+            mutex.withLock { memoryCache[key] = bytes }
             deferred.complete(bytes)
             return bytes
         } catch (cause: Throwable) {

@@ -8,6 +8,9 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import java.io.File
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal actual suspend fun loadFontInternal(
     googleFont: GoogleFont,
@@ -32,15 +35,18 @@ internal actual fun defaultHttpClient(): FontHttpClient? = null
 
 internal actual fun defaultCacheDir(): String? = null
 
-internal actual suspend fun readFileOrNull(path: String): ByteArray? {
-    val file = File(path)
-    return if (file.isFile) file.readBytes() else null
-}
+internal actual suspend fun readFileOrNull(path: String): ByteArray? =
+    withContext(ioDispatcher()) {
+        val file = File(path)
+        if (file.isFile) file.readBytes() else null
+    }
 
 internal actual suspend fun writeFile(path: String, bytes: ByteArray) {
-    val file = File(path)
-    file.parentFile?.mkdirs()
-    file.writeBytes(bytes)
+    withContext(ioDispatcher()) {
+        val file = File(path)
+        file.parentFile?.mkdirs()
+        file.writeBytes(bytes)
+    }
 }
 
 @Composable
@@ -53,3 +59,5 @@ internal actual suspend fun isCachedInternal(
 ): Boolean = false
 
 internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()
+
+internal actual fun ioDispatcher(): CoroutineDispatcher = Dispatchers.IO

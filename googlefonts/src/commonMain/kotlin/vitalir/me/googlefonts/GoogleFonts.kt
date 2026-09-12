@@ -5,6 +5,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import kotlin.concurrent.Volatile
 
 /**
  * Entry point for loading Google Fonts.
@@ -16,6 +17,7 @@ public object GoogleFonts {
      * (the JDK HTTP client on the JVM). Set this to inject a custom client, e.g. the Ktor-backed
      * one from the `googlefonts-ktor` module.
      */
+    @Volatile
     public var httpClient: FontHttpClient? = null
 
     internal fun resolveHttpClient(): FontHttpClient =

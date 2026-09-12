@@ -1,21 +1,23 @@
 package vitalir.me.googlefonts
 
 import androidx.compose.ui.text.font.Font
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-// TODO make concurrent safe
 /** In-process cache of resolved [Font] instances, keyed by the full font request. */
 internal object FontMemoryCache {
 
+    private val mutex = Mutex()
     private val fonts = mutableMapOf<String, Font>()
 
-    fun get(key: String): Font? = fonts[key]
+    suspend fun get(key: String): Font? = mutex.withLock { fonts[key] }
 
-    fun put(key: String, font: Font) {
-        fonts[key] = font
+    suspend fun put(key: String, font: Font) {
+        mutex.withLock { fonts[key] = font }
     }
 
-    fun clear() {
-        fonts.clear()
+    suspend fun clear() {
+        mutex.withLock { fonts.clear() }
     }
 }
 

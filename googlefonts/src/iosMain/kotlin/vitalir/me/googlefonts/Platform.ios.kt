@@ -7,7 +7,10 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import platform.Foundation.NSData
 import platform.Foundation.NSDate
 import platform.Foundation.NSFileManager
@@ -70,21 +73,24 @@ internal actual fun defaultCacheDir(): String? {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-internal actual suspend fun readFileOrNull(path: String): ByteArray? {
-    val data = NSData.dataWithContentsOfFile(path) ?: return null
-    return data.toByteArray()
-}
+internal actual suspend fun readFileOrNull(path: String): ByteArray? =
+    withContext(ioDispatcher()) {
+        val data = NSData.dataWithContentsOfFile(path) ?: return@withContext null
+        data.toByteArray()
+    }
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual suspend fun writeFile(path: String, bytes: ByteArray) {
-    val parent = path.substringBeforeLast('/', missingDelimiterValue = path)
-    NSFileManager.defaultManager.createDirectoryAtPath(
-        parent,
-        withIntermediateDirectories = true,
-        attributes = null,
-        error = null,
-    )
-    bytes.toNSData().writeToFile(path, atomically = true)
+    withContext(ioDispatcher()) {
+        val parent = path.substringBeforeLast('/', missingDelimiterValue = path)
+        NSFileManager.defaultManager.createDirectoryAtPath(
+            parent,
+            withIntermediateDirectories = true,
+            attributes = null,
+            error = null,
+        )
+        bytes.toNSData().writeToFile(path, atomically = true)
+    }
 }
 
 @Composable
@@ -98,3 +104,7 @@ internal actual suspend fun isCachedInternal(
 
 internal actual fun currentTimeMillis(): Long =
     (NSDate().timeIntervalSince1970 * 1000).toLong()
+
+private val ioDispatcherInstance: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(2)
+
+internal actual fun ioDispatcher(): CoroutineDispatcher = ioDispatcherInstance

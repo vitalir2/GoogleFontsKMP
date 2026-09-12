@@ -57,7 +57,7 @@ class GoogleFontsIntegrationTest {
         http.responses["https://font/font-bold.ttf"] = "fake-font-bold-bytes".toByteArray()
         GoogleFonts.httpClient = http
         FontDirectoryProvider.directoryUrl = "http://dir/directory.xml"
-        FontDirectoryProvider.clear()
+        runBlocking { FontDirectoryProvider.clear() }
         cacheDir = Files.createTempDirectory("googlefonts-test").toString()
         FontDiskCache.cacheDirOverride = cacheDir
     }
@@ -67,9 +67,11 @@ class GoogleFontsIntegrationTest {
         runBlocking { FontFetcher.awaitIdle() } // let background prefetches finish first
         GoogleFonts.httpClient = null
         FontDirectoryProvider.directoryUrl = FontDirectoryProvider.DEFAULT_DIRECTORY_URL
-        FontDirectoryProvider.clear()
+        runBlocking {
+            FontDirectoryProvider.clear()
+            FontMemoryCache.clear()
+        }
         FontDiskCache.cacheDirOverride = null
-        FontMemoryCache.clear()
         FontFetcher.reset()
     }
 
