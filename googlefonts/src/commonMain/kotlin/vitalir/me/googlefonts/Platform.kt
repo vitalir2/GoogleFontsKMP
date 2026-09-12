@@ -37,13 +37,6 @@ internal expect suspend fun writeFile(path: String, bytes: ByteArray)
 @Composable
 internal expect fun getPlatformContext(): Any?
 
-/** Whether the font file for the given request is already on disk. */
-internal expect suspend fun isCachedInternal(
-    googleFont: GoogleFont,
-    weight: FontWeight,
-    style: FontStyle,
-): Boolean
-
 /** Current wall-clock time in milliseconds since the Unix epoch. */
 internal expect fun currentTimeMillis(): Long
 

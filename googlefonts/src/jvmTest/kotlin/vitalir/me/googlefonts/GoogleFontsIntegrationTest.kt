@@ -79,7 +79,6 @@ class GoogleFontsIntegrationTest {
     fun loadsAndCachesFont() = runBlocking<Unit> {
         val font = GoogleFont("TestFont").load()
         assertNotNull(font)
-        assertTrue(GoogleFont("TestFont").isCached())
         val cachedFile = File(cacheDir, fontFileKey("TestFont", 400, false))
         assertTrue(cachedFile.exists(), "expected cached font file at $cachedFile")
     }
@@ -101,7 +100,7 @@ class GoogleFontsIntegrationTest {
 
     @Test
     fun toFontFamilyReturnsFamilyWithMatchingFace() = runBlocking<Unit> {
-        val family = GoogleFont("TestFont").toFontFamily(weight = FontWeight.Bold)
+        val family = GoogleFont("TestFont").toFontFamily(FontWeight.Bold)
         assertTrue(family is FontListFontFamily)
         val font = (family as FontListFontFamily).fonts.single()
         assertEquals(FontWeight.Bold, font.weight)

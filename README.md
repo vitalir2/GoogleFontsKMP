@@ -99,15 +99,6 @@ fun rememberGoogleFontFamily(
     onError: ((GoogleFontException) -> Unit)? = null,
 ): FontFamily?
 
-@Composable
-fun rememberGoogleFont(
-    googleFont: GoogleFont,
-    weight: FontWeight = FontWeight.Normal,
-    style: FontStyle = FontStyle.Normal,
-    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
-    onError: ((GoogleFontException) -> Unit)? = null,
-): Font?
-
 suspend fun GoogleFont.load(
     weight: FontWeight = FontWeight.Normal,
     style: FontStyle = FontStyle.Normal,
@@ -115,19 +106,11 @@ suspend fun GoogleFont.load(
 ): Font
 
 suspend fun GoogleFont.toFontFamily(
-    weight: FontWeight = FontWeight.Normal,
-    style: FontStyle = FontStyle.Normal,
-    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
-): FontFamily
-
-suspend fun GoogleFont.toFontFamily(
     vararg weights: FontWeight,
     style: FontStyle = FontStyle.Normal,
 ): FontFamily
 
-suspend fun GoogleFont.preload(weight, style, variationSettings)
 fun GoogleFont.warmUp(weight, style, variationSettings) // non-suspend, fire-and-forget
-suspend fun GoogleFont.isCached(weight, style, variationSettings): Boolean
 
 // Android only
 fun GoogleFont.Provider.isAvailableOnDevice(context: Context): Boolean
@@ -141,21 +124,31 @@ class GoogleFontException(message: String, cause: Throwable? = null) : Exception
 - `rememberGoogleFontFamily` — composable; returns a `FontFamily` ready for `Text(fontFamily = …)`,
   or null while loading / on failure (fallback text keeps rendering). Use `onError` to observe
   failures.
-- `rememberGoogleFont` — same, but returns the underlying `Font`.
 - `load` — suspend; returns a resolved `Font`. Throws `GoogleFontException` when the font cannot
   be resolved or downloaded.
-- `toFontFamily` — loads and wraps the font in a `FontFamily`; the vararg overload loads one face
-  per weight, mirroring the `FontFamily(Font(gf, W400), Font(gf, W700))` pattern.
-- `preload` — suspend; loads and caches without returning the font.
+- `toFontFamily` — loads one face per weight and returns a `FontFamily`, mirroring the
+  `FontFamily(Font(gf, W400), Font(gf, W700))` pattern.
 - `warmUp` — non-suspend; starts a background download so a later `load` or `Font(...)` resolution
   hits the cache. Safe to call at app startup.
-- `isCached` — true when the font is already in memory or on disk, so `load` needs no network.
 - `isAvailableOnDevice` — Android; checks whether the downloadable-fonts provider is available.
+
+### Which API should I use?
+
+| You want to… | Use |
+|---|---|
+| Load a font inside a composable | `rememberGoogleFontFamily(...)` |
+| Load a font from a coroutine / build a theme | `GoogleFont.load(...)` |
+| Load several weights at once | `GoogleFont.toFontFamily(W400, W700, …)` |
+| Preload fonts at startup | `GoogleFont.warmUp(...)` |
+| Use the AndroidX API or a custom provider | `Font(googleFont, fontProvider, …)` |
+
+`rememberGoogleFontFamily` is the safe default: it never blocks and falls back to the system font
+while loading. `Font(...)` is a lower-level descriptor that Compose's resolver loads for you.
 
 ### Android initialization
 
-`rememberGoogleFont` obtains the context from composition automatically. To call `load` /
-`preload` outside composition, initialize once:
+`rememberGoogleFontFamily` obtains the context from composition automatically. To call `load` /
+`toFontFamily` outside composition, initialize once:
 
 ```kotlin
 class App : Application() {
@@ -218,8 +211,8 @@ hook in CMP 1.11). To keep startup fast:
   GoogleFont("Roboto").warmUp(FontWeight.Bold)
   GoogleFont("Open Sans").warmUp()
   ```
-- **Or use the suspend APIs** — `rememberGoogleFontFamily` / `preload()` never block: text renders
-  with the fallback font and reflows when the font is ready.
+- **Or use the composable API** — `rememberGoogleFontFamily` never blocks: text renders with the
+  fallback font and reflows when the font is ready.
 - The `Font(...)` factory prefetches in the background when the descriptor is created, so the
   first layout usually hits the cache. A genuinely cold, never-warmed font blocks the first
   render once (download ~100KB), then is cached in memory and on disk.

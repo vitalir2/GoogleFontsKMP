@@ -52,12 +52,6 @@ internal actual suspend fun writeFile(path: String, bytes: ByteArray) {
 @Composable
 internal actual fun getPlatformContext(): Any? = LocalContext.current
 
-internal actual suspend fun isCachedInternal(
-    googleFont: GoogleFont,
-    weight: FontWeight,
-    style: FontStyle,
-): Boolean = false
-
 internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 
 internal actual fun ioDispatcher(): CoroutineDispatcher = Dispatchers.IO

@@ -13,20 +13,44 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 
 /**
- * Loads a Google Font and returns it once available, or null while loading or on failure.
+ * Loads a Google Font and returns a [FontFamily] ready to be used in `Text(fontFamily = ...)`.
  *
- * The returned [Font] can be used in a [FontFamily] or directly in a [TextStyle].
+ * This is the recommended way to use the library from composables. Loading never blocks
+ * composition: the returned value is `null` while the font is still loading and when loading
+ * fails, so fallback text keeps rendering and automatically reflows once the font is ready.
  *
- * @param onError invoked when loading fails; when null the failure is silent (returns null).
+ * The resolved font is cached in memory and, where available, on disk (see [GoogleFont.warmUp]),
+ * so later calls — including after a cold start or while offline — return immediately.
+ *
+ * ```kotlin
+ * @Composable
+ * fun Greeting() {
+ *     val roboto = rememberGoogleFontFamily(GoogleFont("Roboto"), weight = FontWeight.Bold)
+ *     Text(
+ *         text = "Hello, Google Fonts!",
+ *         fontFamily = roboto, // null while loading / on failure
+ *     )
+ * }
+ * ```
+ *
+ * @param googleFont the font family to load from Google Fonts.
+ * @param weight the font weight to load.
+ * @param style italic or normal.
+ * @param variationSettings variable-font axis settings to apply.
+ * @param onError invoked when loading fails; when `null` the failure is silent and the returned
+ *   value stays `null`.
+ * @return the loaded [FontFamily], or `null` while loading or on failure.
+ * @see GoogleFont.load for the suspending, imperative equivalent.
+ * @see Font for the AndroidX-compatible descriptor factory.
  */
 @Composable
-public fun rememberGoogleFont(
+public fun rememberGoogleFontFamily(
     googleFont: GoogleFont,
     weight: FontWeight = FontWeight.Normal,
     style: FontStyle = FontStyle.Normal,
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
     onError: ((GoogleFontException) -> Unit)? = null,
-): Font? {
+): FontFamily? {
     val context = getPlatformContext()
     val variationKey = variationSettings.settings.toString()
     var font by remember(googleFont.name, weight, style, variationKey) {
@@ -40,23 +64,5 @@ public fun rememberGoogleFont(
             null
         }
     }
-    return font
-}
-
-/**
- * Loads a Google Font and returns a [FontFamily] containing it once available, or null while
- * loading or on failure. The result can be passed directly to `Text(fontFamily = ...)`.
- *
- * @param onError invoked when loading fails; when null the failure is silent (returns null).
- */
-@Composable
-public fun rememberGoogleFontFamily(
-    googleFont: GoogleFont,
-    weight: FontWeight = FontWeight.Normal,
-    style: FontStyle = FontStyle.Normal,
-    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
-    onError: ((GoogleFontException) -> Unit)? = null,
-): FontFamily? {
-    val font = rememberGoogleFont(googleFont, weight, style, variationSettings, onError)
     return font?.let { FontFamily(it) }
 }

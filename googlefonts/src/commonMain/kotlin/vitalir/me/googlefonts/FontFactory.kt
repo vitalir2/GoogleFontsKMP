@@ -8,17 +8,28 @@ import androidx.compose.ui.text.font.FontWeight
 /**
  * Creates a [Font] for a Google Font, mirroring the AndroidX `ui-text-google-fonts` API.
  *
- * The returned [Font] is a descriptor resolved by Compose's `FontFamily.Resolver`:
- * - on Android it loads asynchronously through the system downloadable-fonts provider, with text
- *   reflow when ready;
- * - on iOS/Desktop it resolves from the local cache (see [GoogleFont.warmUp] and
- *   [GoogleFont.preload] to warm it), downloading on first use.
+ * The returned [Font] is a *descriptor*, not a loaded font: Compose's `FontFamily.Resolver`
+ * resolves it when it is used in a [FontFamily]. On Android it loads asynchronously through the
+ * system downloadable-fonts provider and text reflows when it is ready; on iOS/Desktop it is
+ * resolved from the local cache, with a background prefetch triggered so the first layout usually
+ * hits the cache.
+ *
+ * In composables, prefer [rememberGoogleFontFamily] — it handles resolution and reflow for you.
+ *
+ * ```kotlin
+ * val roboto = FontFamily(
+ *     Font(GoogleFont("Roboto"), weight = FontWeight.Normal),
+ *     Font(GoogleFont("Roboto"), weight = FontWeight.Bold),
+ * )
+ * ```
  *
  * @param googleFont the font to load from Google Fonts.
  * @param fontProvider the downloadable-fonts provider (ignored on non-Android platforms).
  * @param weight the font weight to load.
  * @param style italic or normal.
  * @param variationSettings variation settings to apply to the font.
+ * @see rememberGoogleFontFamily for the composable API.
+ * @see GoogleFont.load to obtain a fully resolved font.
  */
 public fun Font(
     googleFont: GoogleFont,
@@ -32,10 +43,18 @@ public fun Font(
  * Creates a [Font] for a Google Font using the default provider (Google Play Services on
  * Android).
  *
+ * The returned [Font] is a descriptor resolved by Compose; see the overload above for details.
+ *
+ * ```kotlin
+ * val roboto = FontFamily(Font(GoogleFont("Roboto"), weight = FontWeight.Bold))
+ * ```
+ *
  * @param googleFont the font to load from Google Fonts.
  * @param weight the font weight to load.
  * @param style italic or normal.
  * @param variationSettings variation settings to apply to the font.
+ * @see rememberGoogleFontFamily for the composable API.
+ * @see GoogleFont.load to obtain a fully resolved font.
  */
 public fun Font(
     googleFont: GoogleFont,

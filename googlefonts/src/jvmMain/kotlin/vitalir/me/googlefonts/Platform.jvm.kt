@@ -79,12 +79,6 @@ internal actual suspend fun writeFile(path: String, bytes: ByteArray) {
 @Composable
 internal actual fun getPlatformContext(): Any? = null
 
-internal actual suspend fun isCachedInternal(
-    googleFont: GoogleFont,
-    weight: FontWeight,
-    style: FontStyle,
-): Boolean = FontDiskCache.get(fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic)) != null
-
 internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 
 internal actual fun ioDispatcher(): CoroutineDispatcher = Dispatchers.IO
