@@ -2,6 +2,7 @@ package vitalir.me.googlefonts
 
 import androidx.compose.ui.text.font.Font
 
+// TODO make concurrent safe
 /** In-process cache of resolved [Font] instances, keyed by the full font request. */
 internal object FontMemoryCache {
 
@@ -18,9 +19,11 @@ internal object FontMemoryCache {
     }
 }
 
+// TODO make concurrent safe
 /** On-disk cache of downloaded font files, keyed by the resolved font file. */
 internal object FontDiskCache {
 
+    // TODO permit to override the cache dir in the settings for the library.
     /** Test hook: overrides the platform cache directory. */
     internal var cacheDirOverride: String? = null
 

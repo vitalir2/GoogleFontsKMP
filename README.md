@@ -61,10 +61,34 @@ fun Greeting() {
 }
 ```
 
+For drop-in compatibility with the AndroidX `ui-text-google-fonts` API, the `Font(...)` factory is
+also provided:
+
+```kotlin
+import vitalir.me.googlefonts.Font
+import vitalir.me.googlefonts.GoogleFont
+import androidx.compose.ui.text.font.FontFamily
+
+val fontFamily = FontFamily(
+    Font(googleFont = GoogleFont("Roboto"), weight = FontWeight.Bold, style = FontStyle.Italic)
+)
+```
+
 ## API
 
 ```kotlin
-class GoogleFont(val name: String, val bestEffort: Boolean = true)
+class GoogleFont(val name: String, val bestEffort: Boolean = true) {
+    class Provider(providerAuthority: String, providerPackage: String, certificates: List<List<ByteArray>>)
+    class Provider(providerAuthority: String, providerPackage: String, certificates: Int) // Android res array
+}
+
+// AndroidX-compatible Font(...) factories (non-suspend descriptors)
+fun Font(googleFont: GoogleFont, fontProvider: GoogleFont.Provider,
+         weight: FontWeight = Normal, style: FontStyle = Normal,
+         variationSettings: FontVariation.Settings = FontVariation.Settings()): Font
+fun Font(googleFont: GoogleFont,
+         weight: FontWeight = Normal, style: FontStyle = Normal,
+         variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style)): Font
 
 @Composable
 fun rememberGoogleFontFamily(
@@ -102,12 +126,18 @@ suspend fun GoogleFont.toFontFamily(
 ): FontFamily
 
 suspend fun GoogleFont.preload(weight, style, variationSettings)
-
+fun GoogleFont.warmUp(weight, style, variationSettings) // non-suspend, fire-and-forget
 suspend fun GoogleFont.isCached(weight, style, variationSettings): Boolean
+
+// Android only
+fun GoogleFont.Provider.isAvailableOnDevice(context: Context): Boolean
 
 class GoogleFontException(message: String, cause: Throwable? = null) : Exception
 ```
 
+- `Font(...)` — AndroidX-compatible non-suspend factory; returns a `Font` descriptor resolved by
+  Compose's `FontFamily.Resolver`. On Android it loads asynchronously with text reflow; on
+  iOS/Desktop it resolves from the cache (see [Startup performance](#startup-performance)).
 - `rememberGoogleFontFamily` — composable; returns a `FontFamily` ready for `Text(fontFamily = …)`,
   or null while loading / on failure (fallback text keeps rendering). Use `onError` to observe
   failures.
@@ -116,8 +146,11 @@ class GoogleFontException(message: String, cause: Throwable? = null) : Exception
   be resolved or downloaded.
 - `toFontFamily` — loads and wraps the font in a `FontFamily`; the vararg overload loads one face
   per weight, mirroring the `FontFamily(Font(gf, W400), Font(gf, W700))` pattern.
-- `preload` — loads and caches without returning the font.
+- `preload` — suspend; loads and caches without returning the font.
+- `warmUp` — non-suspend; starts a background download so a later `load` or `Font(...)` resolution
+  hits the cache. Safe to call at app startup.
 - `isCached` — true when the font is already in memory or on disk, so `load` needs no network.
+- `isAvailableOnDevice` — Android; checks whether the downloadable-fonts provider is available.
 
 ### Android initialization
 
@@ -168,10 +201,30 @@ GoogleFonts.useKtorClient(HttpClient())
 ## Platform notes & limitations
 
 - **Android** resolves fonts through Google Play Services. `bestEffort` and variable-font
-  `variationSettings` behave exactly like the AndroidX library.
+  `variationSettings` behave exactly like the AndroidX library. `Font(...)` loads asynchronously
+  with text reflow.
 - **iOS / Desktop** resolve weight/style against the Google Fonts directory and download the
   matching TTF. `variationSettings` are applied to the loaded font on all targets.
 - **Web** is not implemented yet.
+
+## Startup performance
+
+On iOS/Desktop, Compose's text pipeline resolves fonts synchronously during layout (no async
+hook in CMP 1.11). To keep startup fast:
+
+- **Warm the cache at startup** — call `warmUp()` (non-suspend) for the fonts your theme uses,
+  e.g. in `Application.onCreate` or `main()`:
+  ```kotlin
+  GoogleFont("Roboto").warmUp(FontWeight.Bold)
+  GoogleFont("Open Sans").warmUp()
+  ```
+- **Or use the suspend APIs** — `rememberGoogleFontFamily` / `preload()` never block: text renders
+  with the fallback font and reflows when the font is ready.
+- The `Font(...)` factory prefetches in the background when the descriptor is created, so the
+  first layout usually hits the cache. A genuinely cold, never-warmed font blocks the first
+  render once (download ~100KB), then is cached in memory and on disk.
+- The Google Fonts directory is cached on disk with a 7-day TTL, so cold starts don't re-download
+  it.
 
 ## Preloading with the Compose resolver
 

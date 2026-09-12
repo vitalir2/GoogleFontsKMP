@@ -2,6 +2,7 @@ package vitalir.me.googlefonts
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.AndroidFont
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
@@ -19,15 +20,8 @@ internal actual suspend fun loadFontInternal(
         ?: throw GoogleFontException(
             "No Android Context available. Call initializeGoogleFonts(context) or use rememberGoogleFont.",
         )
-    val impl = GoogleFontImpl(
-        name = googleFont.name,
-        fontProvider = defaultProvider(),
-        weight = weight,
-        style = style,
-        fontVariationSettings = variationSettings.sortedByAxis(),
-        bestEffort = googleFont.bestEffort,
-    )
-    val typeface = GoogleFontTypefaceLoader.awaitLoad(androidContext, impl)
+    val impl = createGoogleFont(googleFont, defaultGoogleFontProvider(), weight, style, variationSettings)
+    val typeface = GoogleFontTypefaceLoader.awaitLoad(androidContext, impl as AndroidFont)
         ?: throw GoogleFontException(
             "Failed to load '${googleFont.name}' from the Google Play Services fonts provider",
         )
@@ -50,10 +44,12 @@ internal actual suspend fun writeFile(path: String, bytes: ByteArray) {
 }
 
 @Composable
-internal actual fun rememberPlatformContext(): Any? = LocalContext.current
+internal actual fun getPlatformContext(): Any? = LocalContext.current
 
 internal actual suspend fun isCachedInternal(
     googleFont: GoogleFont,
     weight: FontWeight,
     style: FontStyle,
 ): Boolean = false
+
+internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()

@@ -34,7 +34,7 @@ internal expect suspend fun writeFile(path: String, bytes: ByteArray)
 
 /** Platform context (Android [android.content.Context]) for composable usage, or null. */
 @Composable
-internal expect fun rememberPlatformContext(): Any?
+internal expect fun getPlatformContext(): Any?
 
 /** Whether the font file for the given request is already on disk. */
 internal expect suspend fun isCachedInternal(
@@ -42,3 +42,6 @@ internal expect suspend fun isCachedInternal(
     weight: FontWeight,
     style: FontStyle,
 ): Boolean
+
+/** Current wall-clock time in milliseconds since the Unix epoch. */
+internal expect fun currentTimeMillis(): Long

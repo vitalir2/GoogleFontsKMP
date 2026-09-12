@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
 import java.io.File
+import kotlinx.coroutines.runBlocking
 
 internal actual suspend fun loadFontInternal(
     googleFont: GoogleFont,
@@ -15,35 +16,40 @@ internal actual suspend fun loadFontInternal(
     variationSettings: FontVariation.Settings,
     context: Any?,
 ): Font {
-    val italic = style == FontStyle.Italic
-    val key = fontFileKey(googleFont.name, weight.weight, italic)
-    val bytes = FontDiskCache.get(key) ?: run {
-        val directory = FontDirectoryProvider.get()
-        val entry = directory.resolve(googleFont.name, weight.weight, italic, googleFont.bestEffort)
-            ?: throw GoogleFontException(
-                "Font '${googleFont.name}' (weight=${weight.weight}, italic=$italic) " +
-                    "not found in the Google Fonts directory",
-            )
-        val fetched = GoogleFonts.resolveHttpClient().get("https:" + entry.url)
-        FontDiskCache.put(key, fetched)
-        fetched
-    }
-    return createLoadedFont(key, bytes, weight, style, variationSettings)
+    FontFetcher.fetch(googleFont, weight, style) // eager: warm the cache before returning
+    return buildLoadedFont(googleFont, weight, style, variationSettings)
 }
 
-private fun createLoadedFont(
-    key: String,
-    bytes: ByteArray,
+internal actual fun createGoogleFont(
+    googleFont: GoogleFont,
+    fontProvider: GoogleFont.Provider,
     weight: FontWeight,
     style: FontStyle,
     variationSettings: FontVariation.Settings,
-): Font = Font(
-    identity = "googlefonts:$key",
-    data = bytes,
-    weight = weight,
-    style = style,
-    variationSettings = variationSettings,
-)
+): Font {
+    // Prefetch during composition so the first layout usually hits the cache.
+    FontFetcher.fetchAsync(googleFont, weight, style)
+    return buildLoadedFont(googleFont, weight, style, variationSettings)
+}
+
+private fun buildLoadedFont(
+    googleFont: GoogleFont,
+    weight: FontWeight,
+    style: FontStyle,
+    variationSettings: FontVariation.Settings,
+): Font {
+    val key = fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic)
+    return Font(
+        identity = "googlefonts:$key",
+        getData = { runBlocking { FontFetcher.fetch(googleFont, weight, style) } },
+        weight = weight,
+        style = style,
+        variationSettings = variationSettings,
+    )
+}
+
+internal actual fun defaultGoogleFontProvider(): GoogleFont.Provider =
+    GoogleFont.Provider("", "", emptyList())
 
 internal actual fun defaultHttpClient(): FontHttpClient? = JdkFontHttpClient()
 
@@ -65,10 +71,12 @@ internal actual suspend fun writeFile(path: String, bytes: ByteArray) {
 }
 
 @Composable
-internal actual fun rememberPlatformContext(): Any? = null
+internal actual fun getPlatformContext(): Any? = null
 
 internal actual suspend fun isCachedInternal(
     googleFont: GoogleFont,
     weight: FontWeight,
     style: FontStyle,
 ): Boolean = FontDiskCache.get(fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic)) != null
+
+internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()

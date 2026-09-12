@@ -7,6 +7,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.LoadedFont
 import java.io.File
 import java.nio.file.Files
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -23,9 +25,11 @@ class GoogleFontsIntegrationTest {
 
     private class FakeHttpClient : FontHttpClient {
         var offline = false
+        var requestCount = 0
         val responses = mutableMapOf<String, ByteArray>()
 
         override suspend fun get(url: String): ByteArray {
+            requestCount++
             if (offline) throw GoogleFontException("offline")
             return responses[url] ?: throw GoogleFontException("no response for $url")
         }
@@ -53,16 +57,20 @@ class GoogleFontsIntegrationTest {
         http.responses["https://font/font-bold.ttf"] = "fake-font-bold-bytes".toByteArray()
         GoogleFonts.httpClient = http
         FontDirectoryProvider.directoryUrl = "http://dir/directory.xml"
+        FontDirectoryProvider.clear()
         cacheDir = Files.createTempDirectory("googlefonts-test").toString()
         FontDiskCache.cacheDirOverride = cacheDir
     }
 
     @AfterTest
     fun tearDown() {
+        runBlocking { FontFetcher.awaitIdle() } // let background prefetches finish first
         GoogleFonts.httpClient = null
         FontDirectoryProvider.directoryUrl = FontDirectoryProvider.DEFAULT_DIRECTORY_URL
+        FontDirectoryProvider.clear()
         FontDiskCache.cacheDirOverride = null
         FontMemoryCache.clear()
+        FontFetcher.reset()
     }
 
     @Test
@@ -111,5 +119,37 @@ class GoogleFontsIntegrationTest {
         val font = GoogleFont("TestFont").load(variationSettings = variation)
         val loaded = font as LoadedFont
         assertEquals(variation, loaded.variationSettings)
+    }
+
+    @Test
+    fun fontFactoryReturnsLoadedFontFromCache() = runBlocking<Unit> {
+        GoogleFont("TestFont").load(weight = FontWeight.Bold)
+        val font = Font(googleFont = GoogleFont("TestFont"), weight = FontWeight.Bold)
+        assertTrue(font is LoadedFont)
+        assertEquals("fake-font-bold-bytes", (font as LoadedFont).data.decodeToString())
+    }
+
+    @Test
+    fun fontFactoryDefaultProviderWorks() = runBlocking<Unit> {
+        GoogleFont("TestFont").load()
+        val font = Font(googleFont = GoogleFont("TestFont"))
+        assertTrue(font is LoadedFont)
+        assertEquals("fake-font-bytes", (font as LoadedFont).data.decodeToString())
+    }
+
+    @Test
+    fun warmUpFillsDiskCache() = runBlocking<Unit> {
+        GoogleFont("TestFont").warmUp()
+        val bytes = FontFetcher.fetch(GoogleFont("TestFont"), FontWeight.Normal, FontStyle.Normal)
+        assertEquals("fake-font-bytes", bytes.decodeToString())
+        assertTrue(File(cacheDir, fontFileKey("TestFont", 400, false)).exists())
+    }
+
+    @Test
+    fun concurrentLoadsDeduplicate() = runBlocking<Unit> {
+        val fonts = (1..4).map { async { GoogleFont("TestFont").load() } }
+        fonts.awaitAll()
+        // directory (1) + font file (1) — concurrent loads share one download each
+        assertEquals(2, http.requestCount)
     }
 }

@@ -26,7 +26,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 @OptIn(ExperimentalTextApi::class)
 internal data class GoogleFontImpl(
     val name: String,
-    private val fontProvider: GoogleFontProvider,
+    private val fontProvider: GoogleFont.Provider,
     override val weight: FontWeight,
     override val style: FontStyle,
     val fontVariationSettings: FontVariation.Settings,
@@ -37,13 +37,24 @@ internal data class GoogleFontImpl(
         val query =
             "name=$name&weight=${weight.weight}" +
                 "&italic=${style.toQueryParam()}&besteffort=${bestEffortQueryParam()}"
-        return FontRequest(
-            fontProvider.providerAuthority,
-            fontProvider.providerPackage,
-            query,
-            fontProvider.certificates,
-            variationSettings.toAndroidString(context),
-        )
+        val certs = fontProvider.certificates
+        return if (certs != null) {
+            FontRequest(
+                fontProvider.providerAuthority,
+                fontProvider.providerPackage,
+                query,
+                certs,
+                variationSettings.toAndroidString(context),
+            )
+        } else {
+            FontRequest(
+                fontProvider.providerAuthority,
+                fontProvider.providerPackage,
+                query,
+                fontProvider.certificatesRes,
+                variationSettings.toAndroidString(context),
+            )
+        }
     }
 
     private fun bestEffortQueryParam() = if (bestEffort) "true" else "false"
@@ -89,21 +100,30 @@ internal data class GoogleFontImpl(
     }
 }
 
-/** Internal provider descriptor (the public API intentionally omits provider details). */
-internal data class GoogleFontProvider(
-    val providerAuthority: String,
-    val providerPackage: String,
-    val certificates: List<List<ByteArray>>,
-)
-
 /** Default provider: Google Play Services fonts, with the well-known GMS signing certificates. */
-internal fun defaultProvider(): GoogleFontProvider = GoogleFontProvider(
+internal actual fun defaultGoogleFontProvider(): GoogleFont.Provider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
     providerPackage = "com.google.android.gms",
     certificates = listOf(
         listOf(Base64.decode(GMS_CERT_DEV, Base64.DEFAULT)),
         listOf(Base64.decode(GMS_CERT_PROD, Base64.DEFAULT)),
     ),
+)
+
+/** Builds the async [AndroidFont] descriptor resolved by Compose's default resolver. */
+internal actual fun createGoogleFont(
+    googleFont: GoogleFont,
+    fontProvider: GoogleFont.Provider,
+    weight: FontWeight,
+    style: FontStyle,
+    variationSettings: FontVariation.Settings,
+): Font = GoogleFontImpl(
+    name = googleFont.name,
+    fontProvider = fontProvider,
+    weight = weight,
+    style = style,
+    fontVariationSettings = variationSettings.sortedByAxis(),
+    bestEffort = googleFont.bestEffort,
 )
 
 @OptIn(ExperimentalTextApi::class)

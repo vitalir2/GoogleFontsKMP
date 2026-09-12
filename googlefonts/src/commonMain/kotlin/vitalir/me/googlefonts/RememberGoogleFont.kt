@@ -27,7 +27,7 @@ public fun rememberGoogleFont(
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
     onError: ((GoogleFontException) -> Unit)? = null,
 ): Font? {
-    val context = rememberPlatformContext()
+    val context = getPlatformContext()
     val variationKey = variationSettings.settings.toString()
     var font by remember(googleFont.name, weight, style, variationKey) {
         mutableStateOf<Font?>(null)

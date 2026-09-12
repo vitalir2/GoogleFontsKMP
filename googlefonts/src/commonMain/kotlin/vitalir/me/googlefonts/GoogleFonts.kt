@@ -69,6 +69,19 @@ public suspend fun GoogleFont.preload(
 }
 
 /**
+ * Starts a background download of [this] font so that a later [load] or `Font(...)` resolution
+ * hits the cache. Safe to call at app startup (e.g. `Application.onCreate` or `main()`); returns
+ * immediately.
+ */
+public fun GoogleFont.warmUp(
+    weight: FontWeight = FontWeight.Normal,
+    style: FontStyle = FontStyle.Normal,
+    variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
+) {
+    FontFetcher.fetchAsync(this, weight, style)
+}
+
+/**
  * Returns true when [this] font is already cached (in memory or on disk) for the given
  * weight/style, meaning [load] would not require a network request.
  */
