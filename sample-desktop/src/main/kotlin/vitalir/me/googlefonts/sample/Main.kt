@@ -34,8 +34,9 @@ fun SampleContent() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Text("Google Fonts", fontWeight = FontWeight.Bold)
         Text("Roboto Bold", fontFamily = robotoBold, fontSize = 32.sp)
         Text("Open Sans Regular", fontFamily = openSans, fontSize = 32.sp)
-        Text("System font (fallback while loading)", fontSize = 32.sp)
+        Text("System font (used for fallback while loading)", fontSize = 32.sp)
     }
 }
