@@ -38,7 +38,9 @@ internal object FontDirectoryParser {
 
     private val familyTag = Regex("<family\\b([^>]*)>")
     private val fontTag = Regex("<font\\b([^>]*)/>")
-    private val attribute = Regex("""(\w+)='([^']*)'""")
+    // Accept both single- and double-quoted attribute values, so a quote-style change by Google
+    // cannot silently yield an empty directory.
+    private val attribute = Regex("""(\w+)='([^']*)'|(\w+)="([^"]*)"""")
 
     fun parse(xml: String): FontDirectory {
         val families = mutableListOf<FontFamilyEntry>()
@@ -69,5 +71,11 @@ internal object FontDirectoryParser {
     }
 
     private fun parseAttributes(tag: String): Map<String, String> =
-        attribute.findAll(tag).associate { it.groupValues[1] to it.groupValues[2] }
+        attribute.findAll(tag).associate { match ->
+            if (match.groupValues[2].isNotEmpty() || match.groupValues[1].isNotEmpty()) {
+                match.groupValues[1] to match.groupValues[2]
+            } else {
+                match.groupValues[3] to match.groupValues[4]
+            }
+        }
 }

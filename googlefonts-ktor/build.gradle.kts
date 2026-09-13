@@ -5,7 +5,9 @@ plugins {
     alias(libs.plugins.vanniktech.maven.publish)
 }
 
-version = "0.1.0"
+// Single source of truth is the VERSION_NAME gradle property (see gradle.properties and the
+// release workflow); fall back to a snapshot version for local builds.
+version = providers.gradleProperty("VERSION_NAME").getOrElse("0.1.0-SNAPSHOT")
 
 mavenPublishing {
     publishToMavenCentral()
@@ -49,11 +51,12 @@ kotlin {
     android {
         namespace = "vitalir.me.googlefonts.ktor"
         compileSdk = 37
-        minSdk = 29
+        minSdk = 24
     }
     jvm()
     iosArm64()
     iosSimulatorArm64()
+    // iosX64 is not published by Compose Multiplatform 1.11 — cannot add it yet.
 
     sourceSets {
         commonMain.dependencies {

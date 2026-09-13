@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 
 internal actual suspend fun loadFontInternal(
     googleFont: GoogleFont,
+    fontProvider: GoogleFont.Provider,
     weight: FontWeight,
     style: FontStyle,
     variationSettings: FontVariation.Settings,
@@ -21,9 +22,9 @@ internal actual suspend fun loadFontInternal(
 ): Font {
     val androidContext = androidContext(context)
         ?: throw GoogleFontException(
-            "No Android Context available. Call initializeGoogleFonts(context) or use rememberGoogleFont.",
+            "No Android Context available. Call initializeGoogleFonts(context) or use rememberGoogleFontFamily.",
         )
-    val impl = createGoogleFont(googleFont, defaultGoogleFontProvider(), weight, style, variationSettings)
+    val impl = createGoogleFont(googleFont, fontProvider, weight, style, variationSettings)
     val typeface = GoogleFontTypefaceLoader.awaitLoad(androidContext, impl as AndroidFont)
         ?: throw GoogleFontException(
             "Failed to load '${googleFont.name}' from the Google Play Services fonts provider",

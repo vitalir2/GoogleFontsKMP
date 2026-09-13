@@ -215,11 +215,15 @@ hook in CMP 1.11). To keep startup fast:
   ```
 - **Or use the composable API** — `rememberGoogleFontFamily` never blocks: text renders with the
   fallback font and reflows when the font is ready.
-- The `Font(...)` factory prefetches in the background when the descriptor is created, so the
-  first layout usually hits the cache. A genuinely cold, never-warmed font blocks the first
-  render once (download ~100KB), then is cached in memory and on disk.
-- The Google Fonts directory is cached on disk with a 7-day TTL, so cold starts don't re-download
-  it.
+- **A cold `Font(...)` blocks the calling thread.** On iOS/Desktop the `Font(...)` factory has no
+  async hook in CMP 1.11, so the first-ever resolution of a never-warmed font blocks composition
+  for the Google Fonts directory download (several MB, once) plus the font file (~100KB), and a
+  failed download throws during composition. The background prefetch it starts cannot win that
+  race — `warmUp()` or the composable API is required for a non-blocking cold start. Once cached,
+  `Font(...)` resolution is instant.
+- The Google Fonts directory is cached on disk with a 7-day refresh TTL. When a refresh fetch
+  fails (for example while offline), the stale on-disk directory is used instead of failing, so
+  fonts can still be resolved offline.
 
 ## Preloading with the Compose resolver
 

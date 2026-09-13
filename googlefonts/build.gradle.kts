@@ -7,7 +7,9 @@ plugins {
     alias(libs.plugins.vanniktech.maven.publish)
 }
 
-version = "0.1.0"
+// Single source of truth is the VERSION_NAME gradle property (see gradle.properties and the
+// release workflow); fall back to a snapshot version for local builds.
+version = providers.gradleProperty("VERSION_NAME").getOrElse("0.1.0-SNAPSHOT")
 
 mavenPublishing {
     publishToMavenCentral()
@@ -51,11 +53,12 @@ kotlin {
     android {
         namespace = "vitalir.me.googlefonts"
         compileSdk = 37
-        minSdk = 29
+        minSdk = 24
     }
     jvm()
     iosArm64()
     iosSimulatorArm64()
+    // iosX64 is not published by Compose Multiplatform 1.11 — cannot add it yet.
 
     explicitApi()
 
@@ -63,7 +66,9 @@ kotlin {
         commonMain.dependencies {
             api(libs.compose.runtime)
             api(libs.compose.ui)
-            implementation(libs.kotlinx.coroutines.core)
+            // Public API is suspend-based; custom FontHttpClient implementers need coroutines
+            // types (e.g. CancellationException), so this must be `api`, not `implementation`.
+            api(libs.kotlinx.coroutines.core)
         }
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)

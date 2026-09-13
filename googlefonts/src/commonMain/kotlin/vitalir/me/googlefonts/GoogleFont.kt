@@ -29,6 +29,22 @@ public class GoogleFont(
         require(name.isNotBlank()) { "name cannot be blank" }
     }
 
+    /** Compares this font request to [other] by name and `bestEffort`. */
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is GoogleFont) return false
+        if (name != other.name) return false
+        if (bestEffort != other.bestEffort) return false
+        return true
+    }
+
+    /** Returns a hash code based on the font request attributes. */
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + bestEffort.hashCode()
+        return result
+    }
+
     /**
      * Attributes used to create a font request, mirroring the AndroidX `GoogleFont.Provider`.
      *

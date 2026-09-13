@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineDispatcher
  */
 internal expect suspend fun loadFontInternal(
     googleFont: GoogleFont,
+    fontProvider: GoogleFont.Provider,
     weight: FontWeight,
     style: FontStyle,
     variationSettings: FontVariation.Settings,

@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -24,6 +25,7 @@ import platform.Foundation.writeToFile
 @OptIn(ExperimentalForeignApi::class)
 internal actual suspend fun loadFontInternal(
     googleFont: GoogleFont,
+    fontProvider: GoogleFont.Provider,
     weight: FontWeight,
     style: FontStyle,
     variationSettings: FontVariation.Settings,
@@ -51,10 +53,22 @@ private fun buildLoadedFont(
     style: FontStyle,
     variationSettings: FontVariation.Settings,
 ): Font {
-    val key = fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic)
+    val key = fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic, googleFont.bestEffort)
     return Font(
         identity = "googlefonts:$key",
-        getData = { runBlocking { FontFetcher.fetch(googleFont, weight, style) } },
+        getData = {
+            runBlocking {
+                try {
+                    FontFetcher.fetch(googleFont, weight, style)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Exception-safe: a failed download must never crash composition. Serve the
+                    // last successfully fetched bytes when available, otherwise rethrow.
+                    FontFetcher.cachedBytes(key) ?: throw e
+                }
+            }
+        },
         weight = weight,
         style = style,
         variationSettings = variationSettings,

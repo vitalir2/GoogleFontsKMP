@@ -49,12 +49,16 @@ class GoogleFontsIntegrationTest {
         </font_directory>
     """.trimIndent()
 
+    private fun ttf(payload: String): ByteArray =
+        byteArrayOf(0x00, 0x01, 0x00, 0x00) + payload.encodeToByteArray()
+
     @BeforeTest
     fun setUp() {
         http = FakeHttpClient()
         http.responses["http://dir/directory.xml"] = directoryXml.toByteArray()
-        http.responses["https://font/font.ttf"] = "fake-font-bytes".toByteArray()
-        http.responses["https://font/font-bold.ttf"] = "fake-font-bold-bytes".toByteArray()
+        // Font bodies must start with a valid font magic to pass cache validation.
+        http.responses["https://font/font.ttf"] = ttf("fake-font-bytes")
+        http.responses["https://font/font-bold.ttf"] = ttf("fake-font-bold-bytes")
         GoogleFonts.httpClient = http
         FontDirectoryProvider.directoryUrl = "http://dir/directory.xml"
         runBlocking { FontDirectoryProvider.clear() }
@@ -79,7 +83,7 @@ class GoogleFontsIntegrationTest {
     fun loadsAndCachesFont() = runBlocking<Unit> {
         val font = GoogleFont("TestFont").load()
         assertNotNull(font)
-        val cachedFile = File(cacheDir, fontFileKey("TestFont", 400, false))
+        val cachedFile = File(cacheDir, fontFileKey("TestFont", 400, false, bestEffort = true))
         assertTrue(cachedFile.exists(), "expected cached font file at $cachedFile")
     }
 
@@ -127,7 +131,7 @@ class GoogleFontsIntegrationTest {
         GoogleFont("TestFont").load(weight = FontWeight.Bold)
         val font = Font(googleFont = GoogleFont("TestFont"), weight = FontWeight.Bold)
         assertTrue(font is LoadedFont)
-        assertEquals("fake-font-bold-bytes", (font as LoadedFont).data.decodeToString())
+        assertTrue((font as LoadedFont).data.decodeToString().contains("fake-font-bold-bytes"))
     }
 
     @Test
@@ -135,15 +139,15 @@ class GoogleFontsIntegrationTest {
         GoogleFont("TestFont").load()
         val font = Font(googleFont = GoogleFont("TestFont"))
         assertTrue(font is LoadedFont)
-        assertEquals("fake-font-bytes", (font as LoadedFont).data.decodeToString())
+        assertTrue((font as LoadedFont).data.decodeToString().contains("fake-font-bytes"))
     }
 
     @Test
     fun warmUpFillsDiskCache() = runBlocking<Unit> {
         GoogleFont("TestFont").warmUp()
         val bytes = FontFetcher.fetch(GoogleFont("TestFont"), FontWeight.Normal, FontStyle.Normal)
-        assertEquals("fake-font-bytes", bytes.decodeToString())
-        assertTrue(File(cacheDir, fontFileKey("TestFont", 400, false)).exists())
+        assertTrue(bytes.decodeToString().contains("fake-font-bytes"))
+        assertTrue(File(cacheDir, fontFileKey("TestFont", 400, false, bestEffort = true)).exists())
     }
 
     @Test

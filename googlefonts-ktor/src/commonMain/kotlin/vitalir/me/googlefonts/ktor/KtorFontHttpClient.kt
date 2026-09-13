@@ -27,12 +27,16 @@ public class KtorFontHttpClient(
      *
      * @throws GoogleFontException if the request fails or the response is not successful.
      */
-    override suspend fun get(url: String): ByteArray {
+    override suspend fun get(url: String): ByteArray = try {
         val response = client.get(url)
         if (!response.status.isSuccess()) {
             throw GoogleFontException("GET $url failed with status ${response.status.value}")
         }
-        return response.bodyAsBytes()
+        response.bodyAsBytes()
+    } catch (e: GoogleFontException) {
+        throw e
+    } catch (e: Exception) {
+        throw GoogleFontException("GET $url failed", e)
     }
 }
 

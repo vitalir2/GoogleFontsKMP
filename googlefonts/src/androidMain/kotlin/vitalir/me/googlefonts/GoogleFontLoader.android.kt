@@ -17,6 +17,7 @@ import androidx.core.provider.FontRequest
 import androidx.core.provider.FontsContractCompat
 import androidx.core.provider.FontsContractCompat.FontRequestCallback
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
@@ -147,8 +148,11 @@ internal object GoogleFontTypefaceLoader : AndroidFont.TypefaceLoader {
                 }
 
                 override fun onTypefaceRequestFailed(reason: Int) {
-                    continuation.cancel(
-                        IllegalStateException(
+                    // resumeWithException, not continuation.cancel: this library calls awaitLoad
+                    // directly, and a CancellationException would silently cancel the caller's
+                    // coroutine instead of surfacing the failure.
+                    continuation.resumeWithException(
+                        GoogleFontException(
                             "Failed to load $font (reason=$reason, ${reasonToString(reason)})",
                         ),
                     )

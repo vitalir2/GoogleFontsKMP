@@ -3,6 +3,7 @@ package vitalir.me.googlefonts
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.concurrent.Volatile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,38 +48,57 @@ internal object FontFetcher {
         scope.coroutineContext[Job]?.children?.toList()?.joinAll()
     }
 
+    /** Returns previously fetched bytes for [key], or null when nothing was fetched yet. */
+    internal suspend fun cachedBytes(key: String): ByteArray? = mutex.withLock { memoryCache[key] }
+
     /**
      * Returns the font file bytes, downloading and caching them if necessary. Concurrent calls
      * for the same font await the same in-flight download.
+     *
+     * The download runs in [FontFetcher]'s own scope, so a caller being cancelled mid-download
+     * cannot poison the shared deferred for other concurrent waiters.
      */
     suspend fun fetch(
         googleFont: GoogleFont,
         weight: FontWeight,
         style: FontStyle,
     ): ByteArray {
-        val key = fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic)
+        val key = fontFileKey(googleFont.name, weight.weight, style == FontStyle.Italic, googleFont.bestEffort)
         mutex.withLock { memoryCache[key] }?.let { return it }
         FontDiskCache.get(key)?.let { bytes ->
-            mutex.withLock { memoryCache[key] = bytes }
-            return bytes
+            // Validate cached bytes too: a pre-existing truncated/corrupt file must not be
+            // served forever.
+            if (isPlausibleFontFile(bytes)) {
+                mutex.withLock { memoryCache[key] = bytes }
+                return bytes
+            }
         }
         val deferred = CompletableDeferred<ByteArray>()
         val winner = mutex.withLock {
             inFlight[key]?.let { return@withLock it } ?: deferred.also { inFlight[key] = it }
         }
         if (winner !== deferred) return winner.await()
-        try {
-            val bytes = download(googleFont, weight, style)
-            FontDiskCache.put(key, bytes)
-            mutex.withLock { memoryCache[key] = bytes }
-            deferred.complete(bytes)
-            return bytes
-        } catch (cause: Throwable) {
-            deferred.completeExceptionally(cause)
-            throw cause
-        } finally {
-            mutex.withLock { inFlight.remove(key) }
+        // Run the download in FontFetcher's own scope: the deferred must be independent of any
+        // single caller, so one cancelled caller cannot fail every concurrent waiter.
+        scope.launch {
+            try {
+                val bytes = download(googleFont, weight, style)
+                if (!isPlausibleFontFile(bytes)) {
+                    throw GoogleFontException(
+                        "GET for '${googleFont.name}' returned a body that is not a font file",
+                    )
+                }
+                // A disk-cache write failure must not fail the load; memory cache still works.
+                runCatching { FontDiskCache.put(key, bytes) }
+                mutex.withLock { memoryCache[key] = bytes }
+                deferred.complete(bytes)
+            } catch (cause: Throwable) {
+                deferred.completeExceptionally(cause)
+            } finally {
+                mutex.withLock { inFlight.remove(key) }
+            }
         }
+        return deferred.await()
     }
 
     /** Starts a background fetch without suspending the caller. */
@@ -102,6 +122,17 @@ internal object FontFetcher {
                 "Font '${googleFont.name}' (weight=${weight.weight}, italic=$italic) " +
                     "not found in the Google Fonts directory",
             )
-        return GoogleFonts.resolveHttpClient().get("https:" + entry.url)
+        // Chokepoint: wrap any non-library exception (raw IOException from a custom client, etc.)
+        // so the documented error contract holds for every load path.
+        return try {
+            GoogleFonts.resolveHttpClient().get("https:" + entry.url)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw e as? GoogleFontException ?: GoogleFontException(
+                "GET ${"https:" + entry.url} failed",
+                e,
+            )
+        }
     }
 }
