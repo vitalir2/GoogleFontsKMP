@@ -231,14 +231,9 @@ val resolver = createFontFamilyResolver()
 resolver.preload(GoogleFont("Roboto").toFontFamily(FontWeight.Normal, FontWeight.Bold))
 ```
 
-## Testing
+## Development
 
-```bash
-./gradlew :googlefonts:jvmTest          # common + JVM tests (parser, resolver, cache, e2e)
-./gradlew :googlefonts-ktor:jvmTest     # Ktor adapter tests (MockEngine)
-./gradlew :sample-android:assembleDebug # Android sample build
-./gradlew :sample-desktop:run           # Desktop sample
-```
+Building, testing, and publishing instructions live in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 
