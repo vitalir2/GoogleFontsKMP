@@ -16,14 +16,14 @@ mavenPublishing {
     signAllPublications()
 }
 
-/** Generates the Dokka landing page from the module README (Dokka requires a `# Module` classifier). */
+/** Generates the Dokka landing page from the README (Dokka requires a `# Module` classifier). */
 val generateLanding by tasks.registering {
-    val readme = project.file("README.md")
+    val readme = rootProject.file("README.md")
     val output = layout.buildDirectory.file("generated/dokka-landing.md")
     inputs.file(readme)
     outputs.file(output)
     doLast {
-        val content = readme.readText().replaceFirst(Regex("^# "), "## ")
+        val content = readme.readText().replaceFirst("# GoogleFontsKMP", "## GoogleFontsKMP")
         output.get().asFile.writeText("# Module ${project.name}\n\n$content")
     }
 }

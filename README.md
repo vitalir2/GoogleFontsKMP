@@ -125,11 +125,14 @@ class GoogleFontException(message: String, cause: Throwable? = null) : Exception
   iOS/Desktop it resolves from the cache (see Startup performance below).
 - `rememberGoogleFontFamily` — composable; returns a `FontFamily` ready for `Text(fontFamily = …)`,
   or null while loading / on failure (fallback text keeps rendering). Use `onError` to observe
-  failures.
+  failures, or pass a `fallback` font family to render while loading / on failure.
+- `rememberGoogleFont` — composable; returns a `GoogleFontState` (`Loading` / `Loaded` / `Failed`)
+  when you need to render a distinct placeholder or error UI.
 - `load` — suspend; returns a resolved `Font`. Throws `GoogleFontException` when the font cannot
-  be resolved or downloaded.
+  be resolved or downloaded; with a non-null `fallback`, returns the fallback instead of throwing.
 - `toFontFamily` — loads one face per weight and returns a `FontFamily`, mirroring the
-  `FontFamily(Font(gf, W400), Font(gf, W700))` pattern.
+  `FontFamily(Font(gf, W400), Font(gf, W700))` pattern. Accepts a `fallback` font substituted for
+  weights that fail to load.
 - `warmUp` — non-suspend; starts a background download so a later `load` or `Font(...)` resolution
   hits the cache. Safe to call at app startup.
 - `isAvailableOnDevice` — Android; checks whether the downloadable-fonts provider is available.
@@ -139,6 +142,7 @@ class GoogleFontException(message: String, cause: Throwable? = null) : Exception
 | You want to… | Use |
 |---|---|
 | Load a font inside a composable | `rememberGoogleFontFamily(...)` |
+| Render a placeholder while loading / an error state | `rememberGoogleFont(...)` |
 | Load a font from a coroutine / build a theme | `GoogleFont.load(...)` |
 | Load several weights at once | `GoogleFont.toFontFamily(W400, W700, …)` |
 | Preload fonts at startup | `GoogleFont.warmUp(...)` |
@@ -146,6 +150,19 @@ class GoogleFontException(message: String, cause: Throwable? = null) : Exception
 
 `rememberGoogleFontFamily` is the safe default: it never blocks and falls back to the system font
 while loading. `Font(...)` is a lower-level descriptor that Compose's resolver loads for you.
+
+### AndroidX compatibility
+
+The API deliberately mirrors AndroidX `ui-text-google-fonts`: `GoogleFont(name, bestEffort)`,
+`GoogleFont.Provider` (certificates or a certificate resource array), and the `Font(...)` factory
+keep AndroidX-compatible parameter names and defaults
+(`(googleFont, fontProvider, weight = Normal, style = Normal, variationSettings = …)`), so AndroidX
+call sites migrate by changing the import only. The types are not the same class — converting a
+descriptor is one line, and a dedicated interop artifact may be shipped separately later:
+
+```kotlin
+val roboto = GoogleFont(androidXGoogleFont.name, androidXGoogleFont.bestEffort)
+```
 
 ### Android initialization
 

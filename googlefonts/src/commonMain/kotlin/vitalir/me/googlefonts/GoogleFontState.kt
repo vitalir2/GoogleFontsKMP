@@ -50,7 +50,7 @@ public sealed interface GoogleFontState {
  * @Composable
  * fun Greeting() {
  *     when (val state = rememberGoogleFont(GoogleFont("Roboto"), weight = FontWeight.Bold)) {
- *         is GoogleFontState.Loading -> Text("Loading…")
+ * is GoogleFontState.Loading -> Text("Loading…")
  *         is GoogleFontState.Loaded -> Text("Hello!", fontFamily = state.fontFamily)
  *         is GoogleFontState.Failed -> Text("Font failed: ${state.error.message}")
  *     }
@@ -64,7 +64,8 @@ public sealed interface GoogleFontState {
  * @param fontProvider the downloadable-fonts provider, or `null` for the platform default
  *   (Google Play Services on Android).
  * @return the current load state.
- * @see rememberGoogleFontFamily for the simpler nullable-[FontFamily] API.
+ * @see rememberGoogleFontFamily for the simpler nullable-[FontFamily] API, which also supports a
+ *   `fallback` font family.
  */
 @Composable
 public fun rememberGoogleFont(
@@ -76,14 +77,14 @@ public fun rememberGoogleFont(
 ): GoogleFontState {
     val context = getPlatformContext()
     val variationKey = variationCacheKey(variationSettings)
-    var state by remember(googleFont, weight, style, variationKey, fontProvider) {
+    var state by remember(googleFont.name, googleFont.bestEffort, weight, style, variationKey, fontProvider) {
         mutableStateOf<GoogleFontState>(GoogleFontState.Loading)
     }
-    LaunchedEffect(googleFont, weight, style, variationKey, fontProvider) {
+    LaunchedEffect(googleFont.name, googleFont.bestEffort, weight, style, variationKey, fontProvider) {
         state = try {
             GoogleFontState.Loaded(
                 FontFamily(
-                    loadCached(googleFont, weight, style, variationSettings, fontProvider, context),
+                    loadCached(googleFont, weight, style, variationSettings, fontProvider, null, context),
                 ),
             )
         } catch (e: CancellationException) {

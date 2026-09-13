@@ -35,18 +35,24 @@ import kotlinx.coroutines.CancellationException
  * }
  * ```
  *
+ * Mirrors the AndroidX fallback-chain pattern (`FontFamily(Font(google), Font(resId))`): with a
+ * non-null [fallback], it is returned while the Google Font is loading and when loading fails,
+ * so the local font renders first and text reflows when the web font is ready.
+ *
  * @param googleFont the font family to load from Google Fonts.
  * @param weight the font weight to load.
  * @param style italic or normal.
  * @param variationSettings variable-font axis settings to apply.
  * @param fontProvider the downloadable-fonts provider, or `null` for the platform default
  *   (Google Play Services on Android).
+ * @param fallback a fallback font family returned while loading and on failure; `null` (the
+ *   default) keeps the current behavior of returning `null`.
  * @param onError invoked when loading fails; when `null` the failure is silent and the returned
  *   value stays `null`.
- * @return the loaded [FontFamily], or `null` while loading or on failure.
+ * @return the loaded [FontFamily], or [fallback] while loading / on failure, or `null` when
+ *   [fallback] is `null`.
  * @see rememberGoogleFont for a state-carrying variant that distinguishes loading from failure.
  * @see GoogleFont.load for the suspending, imperative equivalent.
- * @see Font for the AndroidX-compatible descriptor factory.
  */
 @Composable
 public fun rememberGoogleFontFamily(
@@ -55,17 +61,18 @@ public fun rememberGoogleFontFamily(
     style: FontStyle = FontStyle.Normal,
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
     fontProvider: GoogleFont.Provider? = null,
+    fallback: FontFamily? = null,
     onError: ((GoogleFontException) -> Unit)? = null,
 ): FontFamily? {
     val context = getPlatformContext()
     val variationKey = variationCacheKey(variationSettings)
-    var font by remember(googleFont, weight, style, variationKey, fontProvider) {
+    var font by remember(googleFont.name, googleFont.bestEffort, weight, style, variationKey, fontProvider) {
         mutableStateOf<Font?>(null)
     }
     val onErrorState = rememberUpdatedState(onError)
-    LaunchedEffect(googleFont, weight, style, variationKey, fontProvider) {
+    LaunchedEffect(googleFont.name, googleFont.bestEffort, weight, style, variationKey, fontProvider) {
         font = try {
-            loadCached(googleFont, weight, style, variationSettings, fontProvider, context)
+            loadCached(googleFont, weight, style, variationSettings, fontProvider, null, context)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -75,5 +82,5 @@ public fun rememberGoogleFontFamily(
             null
         }
     }
-    return font?.let { FontFamily(it) }
+    return font?.let { FontFamily(it) } ?: fallback
 }

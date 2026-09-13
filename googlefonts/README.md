@@ -22,7 +22,10 @@ fun Greeting() {
 
 ## AndroidX-compatible API
 
-The `Font(...)` factory mirrors the AndroidX `ui-text-google-fonts` API:
+The `Font(...)` factory mirrors the AndroidX `ui-text-google-fonts` API — same parameter names and
+defaults, same provider constructor shape — so AndroidX call sites migrate by changing the import
+only. Descriptors are distinct types; converting one is a one-liner:
+`GoogleFont(androidXFont.name, androidXFont.bestEffort)`.
 
 ```kotlin
 import vitalir.me.googlefonts.Font
@@ -32,21 +35,6 @@ import androidx.compose.ui.text.font.FontFamily
 val fontFamily = FontFamily(
     Font(googleFont = GoogleFont("Roboto"), weight = FontWeight.Bold)
 )
-```
-
-## AndroidX interop (Android)
-
-AndroidX `ui-text-google-fonts` descriptors convert in both directions, and `rememberGoogleFontFamily`
-accepts the AndroidX type directly:
-
-```kotlin
-import androidx.compose.ui.text.googlefonts.GoogleFont as AndroidXGoogleFont
-import vitalir.me.googlefonts.rememberGoogleFontFamily
-import vitalir.me.googlefonts.toGoogleFont
-
-// convert, or pass the AndroidX descriptor straight into the composable
-val roboto = AndroidXGoogleFont("Lobster Two").toGoogleFont()
-val family = rememberGoogleFontFamily(AndroidXGoogleFont("Lobster Two"), weight = FontWeight.Bold)
 ```
 
 ## Platform behavior

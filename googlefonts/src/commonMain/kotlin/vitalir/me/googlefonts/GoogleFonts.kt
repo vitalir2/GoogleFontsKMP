@@ -6,6 +6,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.concurrent.Volatile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -82,7 +83,12 @@ public object GoogleFonts {
  * @param weight the font weight to load.
  * @param style italic or normal.
  * @param variationSettings variable-font axis settings to apply.
- * @throws GoogleFontException when the font cannot be resolved or downloaded.
+ * @param fontProvider the downloadable-fonts provider, or `null` for the platform default
+ *   (Google Play Services on Android).
+ * @param fallback a fallback font returned instead of throwing when the Google Font cannot be
+ *   resolved or downloaded; when `null` (the default), the call throws [GoogleFontException].
+ * @throws GoogleFontException when the font cannot be resolved or downloaded and [fallback] is
+ *   `null`.
  * @see GoogleFont.toFontFamily to load several weights at once.
  * @see GoogleFont.warmUp to preload without suspending.
  * @see Font for the AndroidX-compatible descriptor factory.
@@ -92,7 +98,8 @@ public suspend fun GoogleFont.load(
     style: FontStyle = FontStyle.Normal,
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
     fontProvider: GoogleFont.Provider? = null,
-): Font = loadCached(this, weight, style, variationSettings, fontProvider, context = null)
+    fallback: Font? = null,
+): Font = loadCached(this, weight, style, variationSettings, fontProvider, fallback, context = null)
 
 /**
  * Loads [this] Google Font at the given [weights] and returns a [FontFamily] with one face per
@@ -100,7 +107,8 @@ public suspend fun GoogleFont.load(
  *
  * Each weight is loaded (and cached) independently. A weight that cannot be resolved fails the
  * whole call; set `bestEffort = true` on the [GoogleFont] to let the provider substitute the
- * closest available weight.
+ * closest available weight. With a non-null [fallback], failed faces are substituted with it
+ * instead of failing the whole call.
  *
  * ```kotlin
  * val roboto = GoogleFont("Roboto").toFontFamily(FontWeight.Normal, FontWeight.Bold)
@@ -110,19 +118,23 @@ public suspend fun GoogleFont.load(
  * @param style italic or normal, applied to every face.
  * @param fontProvider the downloadable-fonts provider, or `null` for the platform default
  *   (Google Play Services on Android).
+ * @param fallback a fallback font substituted for any weight that cannot be resolved or
+ *   downloaded; when `null` (the default), any failure fails the whole call.
  * @throws IllegalArgumentException when [weights] is empty.
- * @throws GoogleFontException when any weight cannot be resolved or downloaded.
+ * @throws GoogleFontException when any weight cannot be resolved or downloaded and [fallback] is
+ *   `null`.
  * @see GoogleFont.load to load a single weight.
  */
 public suspend fun GoogleFont.toFontFamily(
     vararg weights: FontWeight,
     style: FontStyle = FontStyle.Normal,
     fontProvider: GoogleFont.Provider? = null,
+    fallback: Font? = null,
 ): FontFamily {
     require(weights.isNotEmpty()) { "weights must not be empty" }
     val faces = coroutineScope {
         weights.map { weight ->
-            async { load(weight, style, FontVariation.Settings(weight, style), fontProvider) }
+            async { load(weight, style, FontVariation.Settings(weight, style), fontProvider, fallback) }
         }.awaitAll()
     }
     return FontFamily(faces)
@@ -167,6 +179,7 @@ internal suspend fun loadCached(
     style: FontStyle,
     variationSettings: FontVariation.Settings,
     fontProvider: GoogleFont.Provider?,
+    fallback: Font?,
     context: Any?,
 ): Font {
     val key = fontMemoryKey(
@@ -176,14 +189,20 @@ internal suspend fun loadCached(
         variationCacheKey(variationSettings),
     )
     FontMemoryCache.get(key)?.let { return it }
-    val font = loadFontInternal(
-        googleFont,
-        fontProvider ?: defaultGoogleFontProvider(),
-        weight,
-        style,
-        variationSettings,
-        context,
-    )
+    val font = try {
+        loadFontInternal(
+            googleFont,
+            fontProvider ?: defaultGoogleFontProvider(),
+            weight,
+            style,
+            variationSettings,
+            context,
+        )
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: GoogleFontException) {
+        fallback ?: throw e
+    }
     FontMemoryCache.put(key, font)
     return font
 }
