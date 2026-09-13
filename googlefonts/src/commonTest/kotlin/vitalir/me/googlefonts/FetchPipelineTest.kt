@@ -1,5 +1,6 @@
 package vitalir.me.googlefonts
 
+import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.runBlocking
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -17,10 +18,12 @@ class FetchPipelineTest {
     private class FakeHttpClient : FontHttpClient {
         var offline = false
         var requestCount = 0
+        val requestedUrls = mutableSetOf<String>()
         val responses = mutableMapOf<String, ByteArray>()
 
         override suspend fun get(url: String): ByteArray {
             requestCount++
+            requestedUrls += url
             if (offline) throw GoogleFontException("offline")
             return responses[url] ?: throw GoogleFontException("no response for $url")
         }
@@ -36,6 +39,7 @@ class FetchPipelineTest {
         	<families>
         		<family name='TestFont'>
         			<font weight='400' italic='0.0' styleName='Regular' url='//font/font.ttf'/>
+        			<font weight='700' italic='0.0' styleName='Bold' url='//font/font-bold.ttf'/>
         		</family>
         	</families>
         </font_directory>
@@ -58,6 +62,7 @@ class FetchPipelineTest {
             FontMemoryCache.clear()
         }
         GoogleFonts.httpClient = null
+        GoogleFonts.directoryUrl = null
         FontDirectoryProvider.directoryUrl = FontDirectoryProvider.DEFAULT_DIRECTORY_URL
         FontDiskCache.cacheDirOverride = null
         FontFetcher.reset()
@@ -100,5 +105,39 @@ class FetchPipelineTest {
         val directory = FontDirectoryProvider.get()
         assertEquals(1, directory.families.size)
         assertEquals("TestFont", directory.families.single().name)
+    }
+
+    @Test
+    fun directoryUrlIsConfigurable() = runBlocking<Unit> {
+        val http = FakeHttpClient()
+        http.responses["http://mirror/directory.xml"] = directoryXml.encodeToByteArray()
+        GoogleFonts.httpClient = http
+        GoogleFonts.directoryUrl = "http://mirror/directory.xml"
+        val directory = FontDirectoryProvider.get()
+        assertEquals(1, directory.families.size)
+        assertEquals("TestFont", directory.families.single().name)
+        assertTrue(http.responses.containsKey("http://mirror/directory.xml"))
+        assertEquals(1, http.requestCount) // only the mirror was contacted
+    }
+
+    @Test
+    fun warmUpVarargPrefetchesAllWeights() = runBlocking<Unit> {
+        val http = FakeHttpClient()
+        http.responses["http://dir/directory.xml"] = directoryXml.encodeToByteArray()
+        http.responses["https://font/font.ttf"] = ttf("fake-font-bytes")
+        http.responses["https://font/font-bold.ttf"] = ttf("fake-font-bold-bytes")
+        GoogleFonts.httpClient = http
+        GoogleFont("TestFont").warmUp(FontWeight.Normal, FontWeight.Bold)
+        FontFetcher.awaitIdle()
+        // Both font files prefetched (directory may be fetched concurrently twice — last writer
+        // wins), but every URL is requested at most once per needed file.
+        assertTrue(
+            http.requestCount in 3..4,
+            "unexpected requests: count=${http.requestCount} urls=${http.requestedUrls}",
+        )
+        assertEquals(
+            setOf("http://dir/directory.xml", "https://font/font.ttf", "https://font/font-bold.ttf"),
+            http.requestedUrls,
+        )
     }
 }

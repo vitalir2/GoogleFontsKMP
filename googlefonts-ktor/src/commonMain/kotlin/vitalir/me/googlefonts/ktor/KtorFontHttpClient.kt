@@ -6,7 +6,6 @@ import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.isSuccess
 import vitalir.me.googlefonts.FontHttpClient
 import vitalir.me.googlefonts.GoogleFontException
-import vitalir.me.googlefonts.GoogleFonts
 
 /**
  * [FontHttpClient] backed by a Ktor [HttpClient].
@@ -38,19 +37,4 @@ public class KtorFontHttpClient(
     } catch (e: Exception) {
         throw GoogleFontException("GET $url failed", e)
     }
-}
-
-/**
- * Configures [GoogleFonts] to download fonts with the given Ktor [HttpClient].
- *
- * Equivalent to `GoogleFonts.httpClient = KtorFontHttpClient(client)`.
- *
- * ```kotlin
- * GoogleFonts.useKtorClient(HttpClient())
- * ```
- *
- * @param client the Ktor client to use; its lifecycle is managed by the caller.
- */
-public fun GoogleFonts.useKtorClient(client: HttpClient) {
-    httpClient = KtorFontHttpClient(client)
 }

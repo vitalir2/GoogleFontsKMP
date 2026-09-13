@@ -12,10 +12,10 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 /**
- * Entry point for configuring the library.
+ * Entry point for configuring the library's environment: the [httpClient] used to download fonts
+ * and the Google Fonts directory, the on-disk [cacheDir], and the [directoryUrl] mirror.
  *
- * The only global setting is the [httpClient] used to download fonts and the Google Fonts
- * directory. Everything else is done through [GoogleFont] and the top-level composable
+ * Everything else is done through [GoogleFont] and the top-level composable
  * [rememberGoogleFontFamily].
  */
 public object GoogleFonts {
@@ -32,8 +32,6 @@ public object GoogleFonts {
      *
      * ```kotlin
      * GoogleFonts.httpClient = KtorFontHttpClient(HttpClient())
-     * // or, from the googlefonts-ktor module:
-     * GoogleFonts.useKtorClient(HttpClient())
      * ```
      *
      * The client must be safe to use from multiple coroutines, since fonts may be downloaded
@@ -50,6 +48,14 @@ public object GoogleFonts {
      */
     @Volatile
     public var cacheDir: String? = null
+
+    /**
+     * URL of the Google Fonts directory to resolve font files against, or `null` for the default
+     * (`https://fonts.gstatic.com/s/a/directory.xml`). Override it to use a self-hosted mirror or
+     * a bundled proxy of the directory.
+     */
+    @Volatile
+    public var directoryUrl: String? = null
 
     internal fun resolveHttpClient(): FontHttpClient =
         httpClient
@@ -171,6 +177,37 @@ public fun GoogleFont.warmUp(
     fontProvider: GoogleFont.Provider? = null,
 ) {
     FontFetcher.fetchAsync(this, weight, style)
+}
+
+/**
+ * Starts background downloads of [this] font at the given [weights] so that later [load],
+ * [toFontFamily], or composable resolution hits the cache, and returns immediately.
+ *
+ * All weights prefetch in parallel. This mirrors the single-weight [warmUp]; see it for the full
+ * semantics. Prefer this overload when the theme uses several weights.
+ *
+ * ```kotlin
+ * GoogleFont("Roboto").warmUp(FontWeight.Normal, FontWeight.Bold)
+ * ```
+ *
+ * @param weights one font file is preloaded per weight; must not be empty.
+ * @param style italic or normal, applied to every weight.
+ * @param fontProvider the downloadable-fonts provider, or `null` for the platform default
+ *   (Google Play Services on Android).
+ * @throws IllegalArgumentException when [weights] is empty.
+ * @see warmUp for the single-weight overload.
+ * @see GoogleFont.load to await the downloads instead.
+ */
+public fun GoogleFont.warmUp(
+    vararg weights: FontWeight,
+    style: FontStyle = FontStyle.Normal,
+    fontProvider: GoogleFont.Provider? = null,
+) {
+    require(weights.isNotEmpty()) { "weights must not be empty" }
+    // Fire-and-forget per weight: each prefetch runs in FontFetcher's own scope, concurrently.
+    for (weight in weights) {
+        FontFetcher.fetchAsync(this, weight, style)
+    }
 }
 
 internal suspend fun loadCached(

@@ -16,14 +16,8 @@ The core `googlefonts` module uses a zero-dependency platform client by default 
 ```kotlin
 import io.ktor.client.HttpClient
 import vitalir.me.googlefonts.GoogleFonts
-import vitalir.me.googlefonts.ktor.useKtorClient
+import vitalir.me.googlefonts.ktor.KtorFontHttpClient
 
-GoogleFonts.useKtorClient(HttpClient())
-```
-
-or, equivalently:
-
-```kotlin
 GoogleFonts.httpClient = KtorFontHttpClient(HttpClient())
 ```
 

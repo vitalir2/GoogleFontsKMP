@@ -82,6 +82,26 @@ val fontFamily = FontFamily(
 
 ## API
 
+Every public declaration has a single job. Pick by what you are building:
+
+| API | Single purpose | Use it when |
+|---|---|---|
+| `GoogleFont(name, bestEffort)` | Identity: *what* to load | Always — it is the entry point |
+| `GoogleFont.Provider` | *Where* to resolve fonts (GMS certificates) | Custom provider configuration (Android) |
+| `Font(googleFont, …)` | Hand the request to Compose's `FontFamily.Resolver` | AndroidX-style `FontFamily(Font(gf, …))` declarations |
+| `rememberGoogleFontFamily(googleFont, weight…)` | One face in composition; never blocks | The default choice inside composables |
+| `rememberGoogleFontFamily(googleFont, weights…)` | Several faces in composition | Multi-weight typography inside a composable |
+| `GoogleFont.load(…)` | One face, imperative | Building `Typography` outside composition |
+| `GoogleFont.toFontFamily(…)` | Several faces, imperative | Multi-weight themes outside composition |
+| `GoogleFont.warmUp(…)` | Warm the cache at startup; never suspends | `Application.onCreate` / `main()` |
+| `FontHttpClient` | Swap the transport | DI, Ktor, tests |
+| `GoogleFonts.{httpClient, cacheDir, directoryUrl}` | Global environment configuration | Custom client, cache location, or directory mirror |
+| `initializeGoogleFonts(context)` | Android context outside composition | `load` / `toFontFamily` from non-composable code |
+| `GoogleFont.Provider.isAvailableOnDevice(context)` | Debug the provider | Wrong certificates / provider not found |
+| `GoogleFontException` | The one error type | Every failure throws it or reports it through `onError` |
+
+Signatures:
+
 ```kotlin
 class GoogleFont(val name: String, val bestEffort: Boolean = true) {
     class Provider(providerAuthority: String, providerPackage: String, certificates: List<List<ByteArray>>)
@@ -99,9 +119,21 @@ fun Font(googleFont: GoogleFont,
 @Composable
 fun rememberGoogleFontFamily(
     googleFont: GoogleFont,
-    weight: FontWeight = FontWeight.Normal,
+    weight: FontWeight = FontWeight.Normal,          // single face
     style: FontStyle = FontStyle.Normal,
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
+    fontProvider: GoogleFont.Provider? = null,
+    fallback: FontFamily? = null,                    // returned while loading and on failure
+    onError: ((GoogleFontException) -> Unit)? = null,
+): FontFamily?
+
+@Composable
+fun rememberGoogleFontFamily(
+    googleFont: GoogleFont,
+    weights: Collection<FontWeight>,                 // multi-face overload
+    style: FontStyle = FontStyle.Normal,
+    fontProvider: GoogleFont.Provider? = null,
+    fallback: Font? = null,                          // substituted per failed weight
     onError: ((GoogleFontException) -> Unit)? = null,
 ): FontFamily?
 
@@ -109,14 +141,26 @@ suspend fun GoogleFont.load(
     weight: FontWeight = FontWeight.Normal,
     style: FontStyle = FontStyle.Normal,
     variationSettings: FontVariation.Settings = FontVariation.Settings(weight, style),
+    fontProvider: GoogleFont.Provider? = null,
+    fallback: Font? = null,                          // returned instead of throwing on failure
 ): Font
 
 suspend fun GoogleFont.toFontFamily(
     vararg weights: FontWeight,
     style: FontStyle = FontStyle.Normal,
+    fontProvider: GoogleFont.Provider? = null,
+    fallback: Font? = null,
 ): FontFamily
 
-fun GoogleFont.warmUp(weight, style, variationSettings) // non-suspend, fire-and-forget
+fun GoogleFont.warmUp(weight, style, variationSettings, fontProvider)  // single weight
+fun GoogleFont.warmUp(vararg weights, style, fontProvider)             // parallel prefetch
+
+// Environment configuration
+object GoogleFonts {
+    var httpClient: FontHttpClient?   // null → platform default
+    var cacheDir: String?             // null → platform default
+    var directoryUrl: String?         // null → fonts.gstatic.com/s/a/directory.xml
+}
 
 // Android only
 fun GoogleFont.Provider.isAvailableOnDevice(context: Context): Boolean
@@ -124,36 +168,25 @@ fun GoogleFont.Provider.isAvailableOnDevice(context: Context): Boolean
 class GoogleFontException(message: String, cause: Throwable? = null) : Exception
 ```
 
-- `Font(...)` — AndroidX-compatible non-suspend factory; returns a `Font` descriptor resolved by
-  Compose's `FontFamily.Resolver`. On Android it loads asynchronously with text reflow; on
-  iOS/Desktop it resolves from the cache (see Startup performance below).
-- `rememberGoogleFontFamily` — composable; returns a `FontFamily` ready for `Text(fontFamily = …)`,
-  or null while loading / on failure (fallback text keeps rendering). Use `onError` to observe
-  failures, or pass a `fallback` font family to render while loading / on failure.
-- `rememberGoogleFont` — composable; returns a `GoogleFontState` (`Loading` / `Loaded` / `Failed`)
-  when you need to render a distinct placeholder or error UI.
-- `load` — suspend; returns a resolved `Font`. Throws `GoogleFontException` when the font cannot
-  be resolved or downloaded; with a non-null `fallback`, returns the fallback instead of throwing.
-- `toFontFamily` — loads one face per weight and returns a `FontFamily`, mirroring the
-  `FontFamily(Font(gf, W400), Font(gf, W700))` pattern. Accepts a `fallback` font substituted for
-  weights that fail to load.
-- `warmUp` — non-suspend; starts a background download so a later `load` or `Font(...)` resolution
-  hits the cache. Safe to call at app startup.
-- `isAvailableOnDevice` — Android; checks whether the downloadable-fonts provider is available.
+Guidance:
 
-### Which API should I use?
-
-| You want to… | Use |
-|---|---|
-| Load a font inside a composable | `rememberGoogleFontFamily(...)` |
-| Render a placeholder while loading / an error state | `rememberGoogleFont(...)` |
-| Load a font from a coroutine / build a theme | `GoogleFont.load(...)` |
-| Load several weights at once | `GoogleFont.toFontFamily(W400, W700, …)` |
-| Preload fonts at startup | `GoogleFont.warmUp(...)` |
-| Use the AndroidX API or a custom provider | `Font(googleFont, fontProvider, …)` |
-
-`rememberGoogleFontFamily` is the safe default: it never blocks and falls back to the system font
-while loading. `Font(...)` is a lower-level descriptor that Compose's resolver loads for you.
+- `rememberGoogleFontFamily` is the safe default — it never blocks, renders the system font (or
+  `fallback`) while loading, and reflows when ready. The `Font(...)` factory is the lower-level
+  descriptor handed to Compose's resolver.
+- For placeholder/error UI, compose the knobs: `fallback` renders while loading and on failure,
+  and `onError` captures the failure. Errors are plain state — track them yourself:
+  ```kotlin
+  var error by remember { mutableStateOf<GoogleFontException?>(null) }
+  val family = rememberGoogleFontFamily(GoogleFont("Roboto"), onError = { error = it })
+  when {
+      error != null -> Text("Font failed: ${error.message}")
+      family != null -> Text("Hello!", fontFamily = family)
+      else -> Text("Loading…")
+  }
+  ```
+- Don't reach for `load`/`toFontFamily` inside composition — they suspend; use the composables.
+- Don't reach for `FontHttpClient` unless you need a non-default transport; the platform default
+  already handles timeouts, gzip, and error wrapping.
 
 ### AndroidX compatibility
 
@@ -200,8 +233,6 @@ To inject your own client (e.g. Ktor):
 
 ```kotlin
 GoogleFonts.httpClient = KtorFontHttpClient(HttpClient())
-// or
-GoogleFonts.useKtorClient(HttpClient())
 ```
 
 ## Caching & offline behavior
@@ -211,7 +242,8 @@ GoogleFonts.useKtorClient(HttpClient())
 - After the first successful load, subsequent loads — including cold starts and offline use —
   are served from the cache.
 - The Google Fonts directory (`directory.xml`) is fetched only when a font is not already cached
-  and is kept in memory for 7 days.
+  and is kept in memory for 7 days. Point `GoogleFonts.directoryUrl` at a self-hosted mirror to
+  own that traffic.
 - Android additionally benefits from the OS-level provider cache.
 
 ## Platform notes & limitations

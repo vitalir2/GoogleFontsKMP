@@ -65,7 +65,7 @@ internal object FontDirectoryProvider {
             return disk
         }
         val fetched = try {
-            GoogleFonts.resolveHttpClient().get(directoryUrl)
+            GoogleFonts.resolveHttpClient().get(GoogleFonts.directoryUrl ?: directoryUrl)
         } catch (e: CancellationException) {
             throw e
         } catch (e: GoogleFontException) {
