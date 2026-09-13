@@ -45,6 +45,8 @@ dependencies {
 }
 ```
 
+Both artifacts are published on Maven Central.
+
 ## Quick start
 
 ```kotlin
@@ -240,7 +242,7 @@ resolver.preload(GoogleFont("Roboto").toFontFamily(FontWeight.Normal, FontWeight
 
 ## License
 
-[Apache-2.0](https://github.com/yourname/GoogleFontsKMP/blob/main/LICENSE). The Android implementation is derived from
+[Apache-2.0](https://github.com/vitalir2/GoogleFontsKMP/blob/main/LICENSE). The Android implementation is derived from
 [androidx `ui-text-google-fonts`](https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:compose/ui/ui-text-google-fonts/),
 also Apache-2.0. Google Fonts are licensed under the
 [SIL Open Font License](https://scripts.sil.org/OFL).

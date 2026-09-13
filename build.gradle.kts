@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.jetbrains.compose) apply false
     alias(libs.plugins.dokka)
+    alias(libs.plugins.vanniktech.maven.publish) apply false
 }
 
 /**

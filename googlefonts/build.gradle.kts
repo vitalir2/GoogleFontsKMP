@@ -4,9 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.dokka)
+    alias(libs.plugins.vanniktech.maven.publish)
 }
 
 version = "0.1.0"
+
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+}
 
 /** Generates the Dokka landing page from the README (Dokka requires a `# Module` classifier). */
 val generateLanding by tasks.registering {
@@ -28,7 +34,7 @@ dokka {
         skipEmptyPackages.set(true)
         sourceLink {
             localDirectory.set(layout.projectDirectory.dir("src"))
-            remoteUrl("https://github.com/yourname/GoogleFontsKMP/blob/main")
+            remoteUrl("https://github.com/vitalir2/GoogleFontsKMP/blob/main")
             remoteLineSuffix.set("#L")
         }
     }
