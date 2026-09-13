@@ -4,6 +4,10 @@ Load [Google Fonts](https://fonts.google.com) at runtime in Compose Multiplatfor
 Desktop (JVM) and Web (JS/Wasm, planned). A Kotlin Multiplatform port of the AndroidX
 `ui-text-google-fonts` downloadable-fonts integration.
 
+> **Status: not published yet.** GoogleFontsKMP is under active development and has not been
+> released to Maven Central. The API may change at any time — research the sources and adapt the
+> library to your own use case before relying on it.
+
 - **Android** uses the system downloadable-fonts provider (Google Play Services) via
   `FontsContractCompat`, exactly like the AndroidX library — fonts are cached by the OS and work
   offline after the first load.
