@@ -17,7 +17,7 @@ Desktop (JVM) and Web (JS/Wasm, planned). A Kotlin Multiplatform port of the And
 - JDK 17+ (21 recommended)
 - Android: minSdk 29, compileSdk 37
 
-## Modules
+## Project structure
 
 | Module | Description |
 |---|---|
@@ -120,7 +120,7 @@ class GoogleFontException(message: String, cause: Throwable? = null) : Exception
 
 - `Font(...)` — AndroidX-compatible non-suspend factory; returns a `Font` descriptor resolved by
   Compose's `FontFamily.Resolver`. On Android it loads asynchronously with text reflow; on
-  iOS/Desktop it resolves from the cache (see [Startup performance](#startup-performance)).
+  iOS/Desktop it resolves from the cache (see Startup performance below).
 - `rememberGoogleFontFamily` — composable; returns a `FontFamily` ready for `Text(fontFamily = …)`,
   or null while loading / on failure (fallback text keeps rendering). Use `onError` to observe
   failures.
@@ -240,7 +240,7 @@ resolver.preload(GoogleFont("Roboto").toFontFamily(FontWeight.Normal, FontWeight
 
 ## License
 
-[Apache-2.0](LICENSE). The Android implementation is derived from
+[Apache-2.0](https://github.com/yourname/GoogleFontsKMP/blob/main/LICENSE). The Android implementation is derived from
 [androidx `ui-text-google-fonts`](https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:compose/ui/ui-text-google-fonts/),
 also Apache-2.0. Google Fonts are licensed under the
 [SIL Open Font License](https://scripts.sil.org/OFL).

@@ -16,9 +16,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Deduplicated font download pipeline. All load paths — [GoogleFont.load], [GoogleFont.preload],
- * [GoogleFont.warmUp], the `Font(...)` factory prefetch, and the skiko `getData` — share a single
- * in-flight download per font file, so concurrent requests never double-fetch.
+ * Deduplicated font download pipeline. All load paths — [GoogleFont.load], [GoogleFont.warmUp],
+ * the `Font(...)` factory prefetch, and the skiko `getData` — share a single in-flight download
+ * per font file, so concurrent requests never double-fetch.
  */
 internal object FontFetcher {
 

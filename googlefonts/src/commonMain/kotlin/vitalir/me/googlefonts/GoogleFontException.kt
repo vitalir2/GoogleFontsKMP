@@ -9,7 +9,7 @@ package vitalir.me.googlefonts
  * - the Android downloadable-fonts provider rejected the request (provider not found, wrong
  *   certificates);
  * - no [FontHttpClient] is configured and the platform has no default;
- * - [initializeGoogleFonts] was not called before using [GoogleFont.load] outside composition on
+ * - `initializeGoogleFonts` was not called before using [GoogleFont.load] outside composition on
  *   Android.
  *
  * @param message a human-readable description of the failure.

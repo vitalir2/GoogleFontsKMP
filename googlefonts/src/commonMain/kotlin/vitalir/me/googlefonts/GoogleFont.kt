@@ -1,5 +1,7 @@
 package vitalir.me.googlefonts
 
+import androidx.compose.ui.text.font.Font
+
 /**
  * A font family available on Google Fonts.
  *
@@ -70,6 +72,7 @@ public class GoogleFont(
             certificates: Int,
         ) : this(providerAuthority, providerPackage, null, certificates)
 
+        /** Compares this provider to [other] by authority, package, and certificates. */
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is Provider) return false
@@ -80,6 +83,7 @@ public class GoogleFont(
             return true
         }
 
+        /** Returns a hash code based on the provider attributes. */
         override fun hashCode(): Int {
             var result = providerAuthority.hashCode()
             result = 31 * result + providerPackage.hashCode()
@@ -89,5 +93,6 @@ public class GoogleFont(
         }
     }
 
+    /** Returns a string representation of this font request. */
     override fun toString(): String = "GoogleFont(name=$name, bestEffort=$bestEffort)"
 }

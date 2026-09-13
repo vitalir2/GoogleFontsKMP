@@ -22,6 +22,11 @@ public class KtorFontHttpClient(
     private val client: HttpClient,
 ) : FontHttpClient {
 
+    /**
+     * Fetches [url] and returns the response body bytes.
+     *
+     * @throws GoogleFontException if the request fails or the response is not successful.
+     */
     override suspend fun get(url: String): ByteArray {
         val response = client.get(url)
         if (!response.status.isSuccess()) {

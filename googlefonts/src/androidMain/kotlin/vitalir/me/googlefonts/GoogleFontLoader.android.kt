@@ -207,7 +207,7 @@ private fun reasonToString(reasonCode: Int): String {
 }
 
 /**
- * A [Font] that wraps an already-resolved [Typeface]. Used to return a fully loaded font from
+ * A [Font] that wraps an already-resolved `Typeface`. Used to return a fully loaded font from
  * [GoogleFont.load] on Android.
  */
 @OptIn(ExperimentalTextApi::class)

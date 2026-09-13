@@ -11,7 +11,7 @@ import kotlinx.coroutines.CoroutineDispatcher
  * Platform-specific font loading. On Android this uses the system downloadable-fonts provider
  * (Google Play Services); on other platforms the font is downloaded from the Google Fonts CDN.
  *
- * @param context platform context (Android [android.content.Context]) or null.
+ * @param context platform context (Android `android.content.Context`) or null.
  */
 internal expect suspend fun loadFontInternal(
     googleFont: GoogleFont,
@@ -33,7 +33,7 @@ internal expect suspend fun readFileOrNull(path: String): ByteArray?
 /** Writes a file, creating parent directories as needed. */
 internal expect suspend fun writeFile(path: String, bytes: ByteArray)
 
-/** Platform context (Android [android.content.Context]) for composable usage, or null. */
+/** Platform context (Android `android.content.Context`) for composable usage, or null. */
 @Composable
 internal expect fun getPlatformContext(): Any?
 

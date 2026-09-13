@@ -59,7 +59,7 @@ public object GoogleFonts {
  * cold starts and offline use — are served from the cache without a network request. Concurrent
  * loads of the same font share a single download.
  *
- * On Android, call [initializeGoogleFonts] once before using this outside composition; fonts are
+ * On Android, call `initializeGoogleFonts` once before using this outside composition; fonts are
  * resolved through Google Play Services. On iOS/Desktop the font is downloaded from the Google
  * Fonts CDN and cached on disk.
  *
