@@ -1,3 +1,5 @@
+# Builds the Dokka multi-module docs site and deploys it to GitHub Pages.
+# Requires the Pages source to be set to "GitHub Actions" in repo settings.
 name: Publish docs
 
 on:
