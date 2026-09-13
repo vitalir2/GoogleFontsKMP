@@ -233,7 +233,7 @@ resolver.preload(GoogleFont("Roboto").toFontFamily(FontWeight.Normal, FontWeight
 
 ## Development
 
-Building, testing, and publishing instructions live in [DEVELOPMENT.md](DEVELOPMENT.md).
+Building, testing, and publishing instructions live in [DEVELOPMENT.md](https://github.com/vitalir2/GoogleFontsKMP/blob/main/DEVELOPMENT.md).
 
 ## License
 
